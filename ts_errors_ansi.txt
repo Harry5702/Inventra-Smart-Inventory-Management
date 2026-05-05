@@ -1,0 +1,18 @@
+src/app/components/CategoriesView.tsx(5,59): error TS2306: File 'C:/Users/Haris/Desktop/inventra/src/app/types/index.ts' is not a module.
+src/app/components/CategoriesView.tsx(155,50): error TS7006: Parameter 'sub' implicitly has an 'any' type.
+src/app/components/CategoriesView.tsx(155,55): error TS7006: Parameter 'i' implicitly has an 'any' type.
+src/app/components/CategoriesView.tsx(190,48): error TS7006: Parameter 'prod' implicitly has an 'any' type.
+src/app/components/CategoriesView.tsx(190,54): error TS7006: Parameter 'i' implicitly has an 'any' type.
+src/app/components/Header.tsx(4,45): error TS2306: File 'C:/Users/Haris/Desktop/inventra/src/app/types/index.ts' is not a module.
+src/app/components/Sidebar.tsx(12,22): error TS2306: File 'C:/Users/Haris/Desktop/inventra/src/app/types/index.ts' is not a module.
+src/app/hooks/useInventory.ts(5,65): error TS2306: File 'C:/Users/Haris/Desktop/inventra/src/app/types/index.ts' is not a module.
+src/app/hooks/useInventory.ts(71,26): error TS7006: Parameter 'prev' implicitly has an 'any' type.
+src/app/hooks/useInventory.ts(72,29): error TS7006: Parameter 'prev' implicitly has an 'any' type.
+src/app/hooks/useInventory.ts(75,45): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/app/hooks/useInventory.ts(122,34): error TS7006: Parameter 'sub' implicitly has an 'any' type.
+src/app/hooks/useInventory.ts(123,31): error TS7006: Parameter 'prod' implicitly has an 'any' type.
+src/app/page.tsx(9,27): error TS2306: File 'C:/Users/Haris/Desktop/inventra/src/app/components/InventoryView.tsx' is not a module.
+src/app/page.tsx(10,30): error TS2306: File 'C:/Users/Haris/Desktop/inventra/src/app/components/AddCategoryModal.tsx' is not a module.
+src/app/page.tsx(11,33): error TS2306: File 'C:/Users/Haris/Desktop/inventra/src/app/components/AddSubcategoryModal.tsx' is not a module.
+src/app/page.tsx(12,29): error TS2306: File 'C:/Users/Haris/Desktop/inventra/src/app/components/AddProductModal.tsx' is not a module.
+src/app/page.tsx(13,30): error TS2306: File 'C:/Users/Haris/Desktop/inventra/src/app/components/SellProductModal.tsx' is not a module.
