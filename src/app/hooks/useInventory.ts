@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { seedDatabase } from '../lib/seed';
-import { Category, Subcategory, Product, View, ModalType } from '../types';
+import { Category, Subcategory, Product, View, ModalType, ShopOrder } from '../types';
 
 export type SaleTransaction = {
   id: number;
@@ -22,6 +22,7 @@ export type SaleTransaction = {
 export function useInventory() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [sales, setSales] = useState<SaleTransaction[]>([]);
+  const [orders, setOrders] = useState<ShopOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentView, setCurrentView] = useState<View>('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -64,7 +65,8 @@ export function useInventory() {
           )
         )
       `)
-      .order('id', { ascending: true });
+      .order('id', { ascending: true })
+      .order('id', { ascending: false, foreignTable: 'subcategories.products' });
 
     if (error) {
       console.error('Error fetching categories:', error);
@@ -177,6 +179,81 @@ export function useInventory() {
     setSales(mapped);
   }, []);
 
+  // Refresh shop orders from Supabase
+  const refreshOrders = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('shop_orders')
+      .select(`
+        id,
+        shop_name,
+        total_price,
+        total_profit,
+        notes,
+        created_at,
+        updated_at,
+        is_archived,
+        shop_order_items (
+          id,
+          product_id,
+          product_name,
+          unit_price,
+          cost_price,
+          quantity,
+          subtotal,
+          profit
+        )
+      `)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching orders:', error);
+      return;
+    }
+
+    type OrderRow = {
+      id: number;
+      shop_name: string;
+      total_price: number;
+      total_profit: number;
+      notes: string | null;
+      created_at: string;
+      updated_at: string;
+      is_archived: boolean;
+      shop_order_items: {
+        id: number;
+        product_id: number;
+        product_name: string;
+        unit_price: number;
+        cost_price: number;
+        quantity: number;
+        subtotal: number;
+        profit: number;
+      }[];
+    };
+
+    const mapped: ShopOrder[] = ((data as unknown) as OrderRow[] || []).map((o) => ({
+      id: String(o.id),
+      shopName: o.shop_name,
+      totalPrice: Number(o.total_price),
+      totalProfit: Number(o.total_profit),
+      notes: o.notes ?? '',
+      createdAt: o.created_at,
+      updatedAt: o.updated_at,
+      isArchived: o.is_archived,
+      items: (o.shop_order_items || []).map((item) => ({
+        productId: String(item.product_id),
+        productName: item.product_name,
+        unitPrice: Number(item.unit_price),
+        costPrice: Number(item.cost_price),
+        quantity: item.quantity,
+        subtotal: Number(item.subtotal),
+        profit: Number(item.profit),
+      })),
+    }));
+
+    setOrders(mapped);
+  }, []);
+
   useEffect(() => {
     const initializeDb = async () => {
       await checkDbConnection();
@@ -194,10 +271,11 @@ export function useInventory() {
 
       await refreshCategories();
       await refreshSales();
+      await refreshOrders();
     };
 
     initializeDb();
-  }, [checkDbConnection, refreshCategories, refreshSales]);
+  }, [checkDbConnection, refreshCategories, refreshSales, refreshOrders]);
 
   const stats = useMemo(() => {
     // ── Product Aggregates ──────────────────────────────────────────────
@@ -227,26 +305,34 @@ export function useInventory() {
     const monthAgo = new Date(now);
     monthAgo.setDate(monthAgo.getDate() - 30);
 
-    // ── Revenue & Profit Calculations ────────────────────────────────────
-    // Real profit = sum of (selling_price - cost_price) * qty per sale
-    const totalRevenue = sales.reduce((sum, s) => sum + s.total, 0);
-    const totalProfit  = sales.reduce((sum, s) => sum + s.profit, 0);
+    // ── Revenue & Profit: sales + active shop orders ─────────────────────────
+    const activeOrders = orders.filter((o) => !o.isArchived);
+
+    const todayOrders  = activeOrders.filter((o) => o.createdAt.split('T')[0] === todayStr);
+    const weekOrders   = activeOrders.filter((o) => new Date(o.createdAt) >= weekAgo);
+    const monthOrders  = activeOrders.filter((o) => new Date(o.createdAt) >= monthAgo);
+
+    const orderRevTotal  = activeOrders.reduce((sum, o) => sum + o.totalPrice,  0);
+    const orderProfTotal = activeOrders.reduce((sum, o) => sum + o.totalProfit, 0);
+
+    const totalRevenue = sales.reduce((sum, s) => sum + s.total, 0) + orderRevTotal;
+    const totalProfit  = sales.reduce((sum, s) => sum + s.profit, 0) + orderProfTotal;
 
     const todaySales   = sales.filter((s) => s.date === todayStr);
     const weekSales    = sales.filter((s) => new Date(s.rawDate) >= weekAgo);
     const monthSales   = sales.filter((s) => new Date(s.rawDate) >= monthAgo);
 
-    const revenueToday = todaySales.reduce((sum, s) => sum + s.total, 0);
-    const revenueWeek  = weekSales.reduce((sum, s) => sum + s.total, 0);
-    const revenueMonth = monthSales.reduce((sum, s) => sum + s.total, 0);
+    const revenueToday = todaySales.reduce((sum, s) => sum + s.total, 0) + todayOrders.reduce((sum, o) => sum + o.totalPrice, 0);
+    const revenueWeek  = weekSales.reduce((sum, s) => sum + s.total, 0)  + weekOrders.reduce((sum, o) => sum + o.totalPrice, 0);
+    const revenueMonth = monthSales.reduce((sum, s) => sum + s.total, 0) + monthOrders.reduce((sum, o) => sum + o.totalPrice, 0);
 
-    const salesToday = todaySales.reduce((sum, s) => sum + s.qty, 0);
-    const salesWeek  = weekSales.reduce((sum, s) => sum + s.qty, 0);
-    const salesMonth = monthSales.reduce((sum, s) => sum + s.qty, 0);
+    const salesToday = todaySales.reduce((sum, s) => sum + s.qty, 0) + todayOrders.reduce((sum, o) => o.items.reduce((s2, i) => s2 + i.quantity, 0) + sum, 0);
+    const salesWeek  = weekSales.reduce((sum, s) => sum + s.qty, 0)  + weekOrders.reduce((sum, o) => o.items.reduce((s2, i) => s2 + i.quantity, 0) + sum, 0);
+    const salesMonth = monthSales.reduce((sum, s) => sum + s.qty, 0) + monthOrders.reduce((sum, o) => o.items.reduce((s2, i) => s2 + i.quantity, 0) + sum, 0);
 
-    const profitToday = todaySales.reduce((sum, s) => sum + s.profit, 0);
-    const profitWeek  = weekSales.reduce((sum, s) => sum + s.profit, 0);
-    const profitMonth = monthSales.reduce((sum, s) => sum + s.profit, 0);
+    const profitToday = todaySales.reduce((sum, s) => sum + s.profit, 0) + todayOrders.reduce((sum, o) => sum + o.totalProfit, 0);
+    const profitWeek  = weekSales.reduce((sum, s) => sum + s.profit, 0)  + weekOrders.reduce((sum, o) => sum + o.totalProfit, 0);
+    const profitMonth = monthSales.reduce((sum, s) => sum + s.profit, 0) + monthOrders.reduce((sum, o) => sum + o.totalProfit, 0);
 
     // ── Sales Over Time (Mon → Sun) ──────────────────────────────────────
     const salesByDay: { label: string; revenue: number; qty: number }[] = [];
@@ -261,11 +347,14 @@ export function useInventory() {
       d.setDate(startOfWeek.getDate() + i);
       const dayStr = d.toISOString().split('T')[0];
       const label = d.toLocaleDateString('en', { weekday: 'short' });
-      const daySales = sales.filter((s) => s.date === dayStr);
+      const daySales  = sales.filter((s) => s.date === dayStr);
+      const dayOrders = activeOrders.filter((o) => o.createdAt.split('T')[0] === dayStr);
       salesByDay.push({
         label,
-        revenue: daySales.reduce((sum, s) => sum + s.total, 0),
-        qty:     daySales.reduce((sum, s) => sum + s.qty, 0),
+        revenue: daySales.reduce((sum, s) => sum + s.total, 0)
+                + dayOrders.reduce((sum, o) => sum + o.totalPrice, 0),
+        qty:     daySales.reduce((sum, s) => sum + s.qty, 0)
+                + dayOrders.reduce((sum, o) => o.items.reduce((s2, i) => s2 + i.quantity, 0) + sum, 0),
       });
     }
 
@@ -291,6 +380,21 @@ export function useInventory() {
       } else {
         productSalesMap.set(key, { name: catalog?.name ?? s.product, qty: s.qty, revenue: s.total, category: catName });
       }
+    });
+    // Also include shop order items in the product sales map
+    activeOrders.forEach((o) => {
+      o.items.forEach((item) => {
+        const key = item.productId;
+        const existing = productSalesMap.get(key);
+        const catalog = productCatalog.get(key);
+        const catName = catalog?.category ?? '';
+        if (existing) {
+          existing.qty     += item.quantity;
+          existing.revenue += item.subtotal;
+        } else {
+          productSalesMap.set(key, { name: catalog?.name ?? item.productName, qty: item.quantity, revenue: item.subtotal, category: catName });
+        }
+      });
     });
 
     const allProductSales = Array.from(productCatalog.entries()).map(([id, meta]) => {
@@ -322,14 +426,21 @@ export function useInventory() {
       .sort((a, b) => a.qty - b.qty || a.revenue - b.revenue)
       .slice(0, 5);
 
-    // ── Category Performance ─────────────────────────────────────────────
+    // ── Category Performance (sales + orders) ────────────────────────────
     const categoryRevenueMap = new Map<string, number>();
     categories.forEach((cat) => {
       let rev = 0;
       cat.subcategories.forEach((sub) =>
         sub.products.forEach((prod) => {
+          // From direct sales
           sales.forEach((s) => {
             if (s.productId === Number(prod.id)) rev += s.total;
+          });
+          // From shop orders
+          activeOrders.forEach((o) => {
+            o.items.forEach((item) => {
+              if (item.productId === prod.id) rev += item.subtotal;
+            });
           });
         })
       );
@@ -397,13 +508,192 @@ export function useInventory() {
       categoryPerformance,
       stockPredictions: stockPredictions.slice(0, 10),
     };
-  }, [categories, sales]);
+  }, [categories, sales, orders]);
 
   const handleViewChange = useCallback((view: View) => {
     setCurrentView(view);
     setSelectedCategory(null);
     setSelectedSubcategory(null);
   }, []);
+
+  // ─── RESET STATS (sales deleted, orders archived) ────────────────────────
+  const handleResetStats = useCallback(async (period?: 'today' | 'week' | 'month') => {
+    const now = new Date();
+    let salesQuery = supabase.from('sales').delete();
+    let ordersQuery = supabase.from('shop_orders').update({ is_archived: true });
+
+    if (period === 'today') {
+      const todayStr = now.toISOString().split('T')[0];
+      salesQuery = salesQuery.gte('date', todayStr);
+      ordersQuery = ordersQuery.gte('created_at', todayStr);
+    } else if (period === 'week') {
+      const weekAgo = new Date(now);
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      salesQuery = salesQuery.gte('date', weekAgo.toISOString());
+      ordersQuery = ordersQuery.gte('created_at', weekAgo.toISOString());
+    } else if (period === 'month') {
+      const monthAgo = new Date(now);
+      monthAgo.setDate(monthAgo.getDate() - 30);
+      salesQuery = salesQuery.gte('date', monthAgo.toISOString());
+      ordersQuery = ordersQuery.gte('created_at', monthAgo.toISOString());
+    } else {
+      // reset all
+      salesQuery = salesQuery.neq('id', -1);
+      ordersQuery = ordersQuery.neq('id', -1);
+    }
+
+    const { error: salesErr } = await salesQuery;
+    const { error: ordersErr } = await ordersQuery;
+
+    if (salesErr || ordersErr) {
+      alert('Failed to reset stats.');
+      return;
+    }
+    await Promise.all([refreshCategories(), refreshSales(), refreshOrders()]);
+  }, [refreshCategories, refreshSales, refreshOrders]);
+
+
+  // ─── ORDER OPERATIONS (Supabase) ──────────────────────────────────
+  const handleAddOrder = useCallback(async (data: Omit<ShopOrder, 'id' | 'createdAt' | 'updatedAt'>) => {
+    // 1. Insert the order header
+    const { data: orderRow, error: orderErr } = await supabase
+      .from('shop_orders')
+      .insert({
+        shop_name: data.shopName,
+        total_price: data.totalPrice,
+        total_profit: data.totalProfit,
+        notes: data.notes ?? null,
+      })
+      .select()
+      .single();
+
+    if (orderErr || !orderRow) {
+      alert('Failed to create order: ' + (orderErr?.message ?? 'unknown'));
+      return;
+    }
+
+    // 2. Insert line items
+    const itemRows = data.items.map((item) => ({
+      order_id:     orderRow.id,
+      product_id:   Number(item.productId),
+      product_name: item.productName,
+      unit_price:   item.unitPrice,
+      cost_price:   item.costPrice,
+      quantity:     item.quantity,
+      subtotal:     item.subtotal,
+      profit:       item.profit,
+    }));
+
+    const { error: itemErr } = await supabase.from('shop_order_items').insert(itemRows);
+    if (itemErr) {
+      alert('Failed to save order items: ' + itemErr.message);
+      return;
+    }
+
+    // 3. Deduct inventory
+    for (const item of data.items) {
+      const prodId = Number(item.productId);
+      const { data: inv } = await supabase.from('inventory').select('quantity').eq('product_id', prodId).maybeSingle();
+      const newQty = Math.max(0, Number(inv?.quantity ?? 0) - item.quantity);
+      await supabase.from('inventory').upsert(
+        { product_id: prodId, quantity: newQty, updated_at: new Date().toISOString() },
+        { onConflict: 'product_id' }
+      );
+    }
+
+    await Promise.all([refreshOrders(), refreshCategories()]);
+  }, [refreshOrders, refreshCategories]);
+
+  const handleEditOrder = useCallback(async (id: string, data: Omit<ShopOrder, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const orderId = Number(id);
+    const oldOrder = orders.find(o => String(o.id) === String(id));
+
+    // Restore old inventory
+    if (oldOrder) {
+      for (const item of oldOrder.items) {
+        const prodId = Number(item.productId);
+        const { data: inv } = await supabase.from('inventory').select('quantity').eq('product_id', prodId).maybeSingle();
+        const newQty = Number(inv?.quantity ?? 0) + item.quantity;
+        await supabase.from('inventory').upsert(
+          { product_id: prodId, quantity: newQty, updated_at: new Date().toISOString() },
+          { onConflict: 'product_id' }
+        );
+      }
+    }
+
+    // Update header
+    const { error: headerErr } = await supabase
+      .from('shop_orders')
+      .update({
+        shop_name:    data.shopName,
+        total_price:  data.totalPrice,
+        total_profit: data.totalProfit,
+        notes:        data.notes ?? null,
+        updated_at:   new Date().toISOString(),
+      })
+      .eq('id', orderId);
+
+    if (headerErr) {
+      alert('Failed to update order: ' + headerErr.message);
+      return;
+    }
+
+    // Delete old items then re-insert
+    await supabase.from('shop_order_items').delete().eq('order_id', orderId);
+
+    const itemRows = data.items.map((item) => ({
+      order_id:     orderId,
+      product_id:   Number(item.productId),
+      product_name: item.productName,
+      unit_price:   item.unitPrice,
+      cost_price:   item.costPrice,
+      quantity:     item.quantity,
+      subtotal:     item.subtotal,
+      profit:       item.profit,
+    }));
+
+    const { error: itemErr } = await supabase.from('shop_order_items').insert(itemRows);
+    if (itemErr) {
+      alert('Failed to update order items: ' + itemErr.message);
+      return;
+    }
+
+    // Deduct new inventory
+    for (const item of data.items) {
+      const prodId = Number(item.productId);
+      const { data: inv } = await supabase.from('inventory').select('quantity').eq('product_id', prodId).maybeSingle();
+      const newQty = Math.max(0, Number(inv?.quantity ?? 0) - item.quantity);
+      await supabase.from('inventory').upsert(
+        { product_id: prodId, quantity: newQty, updated_at: new Date().toISOString() },
+        { onConflict: 'product_id' }
+      );
+    }
+
+    await Promise.all([refreshOrders(), refreshCategories()]);
+  }, [orders, refreshOrders, refreshCategories]);
+
+  const handleDeleteOrder = useCallback(async (id: string) => {
+    // Restore inventory
+    const order = orders.find(o => String(o.id) === String(id));
+    if (order && !order.isArchived) { // don't restore if already archived (optional, but good practice)
+      for (const item of order.items) {
+        const prodId = Number(item.productId);
+        const { data: inv } = await supabase.from('inventory').select('quantity').eq('product_id', prodId).maybeSingle();
+        const newQty = Number(inv?.quantity ?? 0) + item.quantity;
+        await supabase.from('inventory').upsert(
+          { product_id: prodId, quantity: newQty, updated_at: new Date().toISOString() },
+          { onConflict: 'product_id' }
+        );
+      }
+    }
+
+    const { error } = await supabase.from('shop_orders').delete().eq('id', Number(id));
+    if (error) {
+      alert('Failed to delete order: ' + error.message);
+      return;
+    }
+    await Promise.all([refreshOrders(), refreshCategories()]);
+  }, [orders, refreshOrders, refreshCategories]);
 
   const handleCategoryClick = useCallback((cat: Category) => {
     setSelectedCategory(cat);
@@ -724,6 +1014,7 @@ export function useInventory() {
   return {
     categories,
     sales,
+    orders,
     isLoading,
     currentView,
     sidebarOpen,
@@ -751,6 +1042,10 @@ export function useInventory() {
     handleDeleteCategory,
     handleDeleteSubcategory,
     handleDeleteProduct,
+    handleResetStats,
+    handleAddOrder,
+    handleEditOrder,
+    handleDeleteOrder,
     openSellModal,
     closeSellModal,
     openAddStockModal,

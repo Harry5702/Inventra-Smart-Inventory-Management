@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   TrendingUp, DollarSign, AlertTriangle, BarChart3,
-  Zap, Package, ArrowUp, ArrowDown, Brain, Clock,
+  Zap, Package, ArrowUp, ArrowDown, Brain, Clock, RotateCcw,
 } from 'lucide-react';
 
 type Period = 'today' | 'week' | 'month';
@@ -32,6 +32,7 @@ type StatsType = {
 type DashboardViewProps = {
   stats: StatsType;
   categoryCount: number;
+  onResetStats: (period?: 'today' | 'week' | 'month') => void;
 };
 
 const PERIOD_LABELS: Record<Period, string> = { today: 'Today', week: 'This Week', month: 'This Month' };
@@ -48,8 +49,17 @@ function urgencyColor(days: number | null) {
   return 'text-emerald-600 bg-emerald-50';
 }
 
-export default function DashboardView({ stats, categoryCount }: DashboardViewProps) {
+export default function DashboardView({ stats, categoryCount, onResetStats }: DashboardViewProps) {
   const [period, setPeriod] = useState<Period>('week');
+  const [resetting, setResetting] = useState(false);
+
+  const handleReset = async (p?: 'today' | 'week' | 'month') => {
+    const label = p ? { today: 'today\'s', week: 'this week\'s', month: 'this month\'s' }[p] : 'all';
+    if (!window.confirm(`Reset ${label} sales stats? Orders will NOT be affected.`)) return;
+    setResetting(true);
+    await onResetStats(p);
+    setResetting(false);
+  };
 
   const revenue = period === 'today' ? stats.revenueToday : period === 'week' ? stats.revenueWeek : stats.revenueMonth;
   const salesQty = period === 'today' ? stats.salesToday  : period === 'week' ? stats.salesWeek  : stats.salesMonth;
@@ -62,18 +72,38 @@ export default function DashboardView({ stats, categoryCount }: DashboardViewPro
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="space-y-6">
 
       {/* ── Period Tabs ── */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
         {(['today', 'week', 'month'] as Period[]).map((p) => (
-          <button
-            key={p}
-            onClick={() => setPeriod(p)}
-            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
-              period === p ? 'bg-slate-800 text-white shadow' : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50'
-            }`}
-          >
-            {PERIOD_LABELS[p]}
-          </button>
+          <div key={p} className="flex items-center gap-1">
+            <button
+              onClick={() => setPeriod(p)}
+              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
+                period === p ? 'bg-slate-800 text-white shadow' : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              {PERIOD_LABELS[p]}
+            </button>
+            {period === p && (
+              <button
+                onClick={() => handleReset(p)}
+                disabled={resetting}
+                title={`Reset ${PERIOD_LABELS[p]} sales stats`}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-medium border border-red-200 text-red-400 hover:bg-red-50 hover:text-red-500 transition-all disabled:opacity-50"
+              >
+                <RotateCcw size={11} className={resetting ? 'animate-spin' : ''} />
+                Reset
+              </button>
+            )}
+          </div>
         ))}
+        <button
+          onClick={() => handleReset()}
+          disabled={resetting}
+          className="ml-auto flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-medium border border-red-200 text-red-500 hover:bg-red-50 hover:border-red-300 transition-all disabled:opacity-50"
+        >
+          <RotateCcw size={13} className={resetting ? 'animate-spin' : ''} />
+          Reset All Stats
+        </button>
       </div>
 
       {/* ── KPI Cards ── */}

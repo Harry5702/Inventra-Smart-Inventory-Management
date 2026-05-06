@@ -8,6 +8,7 @@ import DashboardView from './components/DashboardView';
 import CategoriesView from './components/CategoriesView';
 import SalesView from './components/SalesView';
 import InventoryView from './components/InventoryView';
+import OrdersView from './components/OrdersView';
 import AuthScreen from './components/AuthScreen';
 import AddCategoryModal from './components/AddCategoryModal';
 import AddSubcategoryModal from './components/AddSubcategoryModal';
@@ -20,6 +21,7 @@ function DashboardApp() {
   const {
     categories,
     sales,
+    orders,
     isLoading,
     currentView,
     sidebarOpen,
@@ -47,6 +49,10 @@ function DashboardApp() {
     handleDeleteCategory,
     handleDeleteSubcategory,
     handleDeleteProduct,
+    handleResetStats,
+    handleAddOrder,
+    handleEditOrder,
+    handleDeleteOrder,
     openSellModal,
     closeSellModal,
     openAddStockModal,
@@ -89,7 +95,11 @@ function DashboardApp() {
                 transition={{ duration: 0.2 }}
               >
                 {currentView === 'dashboard' && (
-                  <DashboardView stats={stats} categoryCount={categories.length} />
+                  <DashboardView
+                    stats={stats}
+                    categoryCount={categories.length}
+                    onResetStats={handleResetStats}
+                  />
                 )}
                 {currentView === 'categories' && (
                   <CategoriesView
@@ -120,6 +130,15 @@ function DashboardApp() {
                     categories={categories}
                     onOpenAddStockModal={openAddStockModal}
                     onOpenSellModal={openSellModal}
+                  />
+                )}
+                {currentView === 'orders' && (
+                  <OrdersView
+                    categories={categories}
+                    orders={orders}
+                    onAddOrder={handleAddOrder}
+                    onEditOrder={handleEditOrder}
+                    onDeleteOrder={handleDeleteOrder}
                   />
                 )}
               </motion.div>

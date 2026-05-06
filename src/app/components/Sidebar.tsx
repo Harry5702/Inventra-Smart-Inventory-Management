@@ -8,6 +8,7 @@ import {
   Package,
   Menu,
   Boxes,
+  ClipboardList,
 } from 'lucide-react';
 import { View } from '../types';
 
@@ -23,6 +24,7 @@ const navItems: { id: View; label: string; icon: React.ElementType }[] = [
   { id: 'categories', label: 'Categories', icon: Grid3X3 },
   { id: 'sales', label: 'Sales', icon: ShoppingCart },
   { id: 'inventory', label: 'Inventory', icon: Package },
+  { id: 'orders', label: 'Orders', icon: ClipboardList },
 ];
 
 export default function Sidebar({
