@@ -19,6 +19,8 @@ type CategoriesViewProps = {
   onOpenEditModal: (product: Product) => void;
   onOpenSellModal: (product: Product) => void;
   onOpenAddStockModal: (product: Product) => void;
+  onEditCategory: (id: string, newName: string) => void;
+  onEditSubcategory: (id: string, newName: string) => void;
   onDeleteCategory: (id: string) => void;
   onDeleteSubcategory: (id: string) => void;
   onDeleteProduct: (id: string) => void;
@@ -36,6 +38,8 @@ export default function CategoriesView({
   onOpenEditModal,
   onOpenSellModal,
   onOpenAddStockModal,
+  onEditCategory,
+  onEditSubcategory,
   onDeleteCategory,
   onDeleteSubcategory,
   onDeleteProduct,
@@ -172,6 +176,19 @@ export default function CategoriesView({
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
+                        const newName = window.prompt('Enter new category name:', cat.name);
+                        if (newName && newName.trim() !== '' && newName !== cat.name) {
+                          onEditCategory(cat.id, newName.trim());
+                        }
+                      }}
+                      className="p-2 text-slate-300 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
+                      title="Edit category"
+                    >
+                      <Pencil size={16} />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
                         if (
                           window.confirm(
                             `Are you sure you want to delete "${cat.name}"?\n\nThis will also delete all subcategories, products, and stock inside it.`
@@ -222,6 +239,19 @@ export default function CategoriesView({
                     {getDynamicIcon(sub.name, 'subcategory')}
                   </div>
                   <div className="flex items-center gap-1">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const newName = window.prompt('Enter new subcategory name:', sub.name);
+                        if (newName && newName.trim() !== '' && newName !== sub.name) {
+                          onEditSubcategory(sub.id, newName.trim());
+                        }
+                      }}
+                      className="p-2 text-slate-300 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
+                      title="Edit subcategory"
+                    >
+                      <Pencil size={16} />
+                    </button>
                     <button
                       onClick={(e) => {
                         e.stopPropagation();

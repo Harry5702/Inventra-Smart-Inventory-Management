@@ -8,24 +8,27 @@ type EditProductModalProps = {
   isOpen: boolean;
   product: Product | null;
   onClose: () => void;
-  onEdit: (productId: string, name: string, sellingPrice: number, costPrice: number) => void;
+  onEdit: (productId: string, name: string, sellingPrice: number, costPrice: number, stock: number) => void;
 };
 
 export default function EditProductModal({ isOpen, product, onClose, onEdit }: EditProductModalProps) {
   const [name, setName] = useState('');
   const [sellingPrice, setSellingPrice] = useState('');
   const [costPrice, setCostPrice] = useState('');
+  const [stock, setStock] = useState('');
 
   useEffect(() => {
     if (product && isOpen) {
       setName(product.name);
       setSellingPrice(String(product.price));
       setCostPrice(String(product.costPrice));
+      setStock(String(product.stock));
     }
   }, [product, isOpen]);
 
   const sp = Number(sellingPrice) || 0;
   const cp = Number(costPrice) || 0;
+  const stk = parseInt(stock, 10) || 0;
   const margin = sp > 0 ? Math.round(((sp - cp) / sp) * 100) : 0;
   const profitPerUnit = sp - cp;
 
@@ -34,7 +37,8 @@ export default function EditProductModal({ isOpen, product, onClose, onEdit }: E
     if (!name.trim()) { alert('Please enter a product name'); return; }
     if (sp <= 0) { alert('Please enter a valid selling price'); return; }
     if (cp < 0)  { alert('Purchase price cannot be negative'); return; }
-    onEdit(product.id, name.trim(), sp, cp);
+    if (stk < 0) { alert('Stock cannot be negative'); return; }
+    onEdit(product.id, name.trim(), sp, cp, stk);
     onClose();
   };
 
@@ -75,6 +79,18 @@ export default function EditProductModal({ isOpen, product, onClose, onEdit }: E
               className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-300 text-sm"
             />
           </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-1">Current Stock (units)</label>
+          <input
+            type="number"
+            min={0}
+            value={stock}
+            onChange={(e) => setStock(e.target.value)}
+            placeholder="0"
+            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-300 text-sm"
+          />
         </div>
 
         {/* Live profit preview */}

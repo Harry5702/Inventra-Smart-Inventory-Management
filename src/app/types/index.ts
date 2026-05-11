@@ -23,7 +23,7 @@ export type Category = {
 
 export type View = 'dashboard' | 'categories' | 'sales' | 'inventory' | 'orders';
 
-export type ModalType = 'addCategory' | 'addSubcategory' | 'addProduct' | 'editProduct' | 'sellProduct' | 'addStock' | null;
+export type ModalType = 'addCategory' | 'addSubcategory' | 'addProduct' | 'editProduct' | 'sellProduct' | 'addStock' | 'editCategory' | 'editSubcategory' | null;
 
 export type OrderItem = {
   productId: string;

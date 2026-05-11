@@ -50,6 +50,8 @@ function DashboardApp() {
     handleSellProduct,
     handleEditSale,
     handleDeleteSale,
+    handleEditCategory,
+    handleEditSubcategory,
     handleDeleteCategory,
     handleDeleteSubcategory,
     handleDeleteProduct,
@@ -118,6 +120,8 @@ function DashboardApp() {
                     onOpenEditModal={(p) => { setEditingProduct(p); setActiveModal('editProduct'); }}
                     onOpenSellModal={openSellModal}
                     onOpenAddStockModal={openAddStockModal}
+                    onEditCategory={handleEditCategory}
+                    onEditSubcategory={handleEditSubcategory}
                     onDeleteCategory={handleDeleteCategory}
                     onDeleteSubcategory={handleDeleteSubcategory}
                     onDeleteProduct={handleDeleteProduct}

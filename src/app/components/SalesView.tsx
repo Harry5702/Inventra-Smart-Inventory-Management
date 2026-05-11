@@ -53,6 +53,9 @@ export default function SalesView({ transactions, orders = [], onEditSale, onDel
   const [editQty, setEditQty] = useState('');
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   
+  const [filterStartDate, setFilterStartDate] = useState(getLocalDateStr(new Date()));
+  const [filterEndDate, setFilterEndDate] = useState(getLocalDateStr(new Date()));
+  
   // PDF Report Date
   const [reportDate, setReportDate] = useState(getLocalDateStr(new Date()));
 
@@ -95,8 +98,13 @@ export default function SalesView({ transactions, orders = [], onEditSale, onDel
       rawDate: o.createdAt
     }));
 
-    return [...retail, ...shopOrders].sort((a, b) => new Date(b.rawDate).getTime() - new Date(a.rawDate).getTime());
-  }, [transactions, activeOrders]);
+const combined = [...retail, ...shopOrders].sort((a, b) => new Date(b.rawDate).getTime() - new Date(a.rawDate).getTime());
+      
+      if (filterStartDate && filterEndDate) {
+        return combined.filter(u => u.dateStr >= filterStartDate && u.dateStr <= filterEndDate);
+      }
+      return combined;
+    }, [transactions, activeOrders, filterStartDate, filterEndDate]);
 
   const totalRevenue = unifiedItems.reduce((s, t) => s + t.total, 0);
   const totalProfit  = unifiedItems.reduce((s, t) => s + t.profit, 0);
@@ -203,8 +211,33 @@ export default function SalesView({ transactions, orders = [], onEditSale, onDel
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-        <div className="p-5 border-b border-slate-100">
-          <h3 className="font-semibold text-slate-700">Recent Transactions</h3>
+        <div className="p-5 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <h3 className="font-semibold text-slate-700">Transactions</h3>
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-slate-500">From</span>
+            <input
+              type="date"
+              value={filterStartDate}
+              onChange={(e) => setFilterStartDate(e.target.value)}
+              className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300"
+            />
+            <span className="text-slate-500">To</span>
+            <input
+              type="date"
+              value={filterEndDate}
+              onChange={(e) => setFilterEndDate(e.target.value)}
+              className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300"
+            />
+            <button
+              onClick={() => {
+                setFilterStartDate('');
+                setFilterEndDate('');
+              }}
+              className="px-3 py-1.5 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200"
+            >
+              Clear Filter
+            </button>
+          </div>
         </div>
         <div className="divide-y divide-slate-50">
           {unifiedItems.length === 0 ? (

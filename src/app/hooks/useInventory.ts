@@ -945,6 +945,34 @@ export function useInventory() {
     await Promise.all([refreshCategories(), refreshSales()]);
   }, [refreshCategories, refreshSales]);
 
+  // ─── EDIT CATEGORY / SUBCATEGORY ───────────────────
+
+  const handleEditCategory = useCallback(async (id: string, newName: string) => {
+    const { error } = await supabase
+      .from('categories')
+      .update({ name: newName })
+      .eq('id', Number(id));
+
+    if (error) {
+      alert('Failed to edit category: ' + error.message);
+      return;
+    }
+    await refreshCategories();
+  }, [refreshCategories]);
+
+  const handleEditSubcategory = useCallback(async (id: string, newName: string) => {
+    const { error } = await supabase
+      .from('subcategories')
+      .update({ name: newName })
+      .eq('id', Number(id));
+
+    if (error) {
+      alert('Failed to edit subcategory: ' + error.message);
+      return;
+    }
+    await refreshCategories();
+  }, [refreshCategories]);
+
   // ─── DELETE CATEGORY / SUBCATEGORY ───────────────────
 
   const handleDeleteCategory = useCallback(async (categoryId: string) => {
@@ -1002,9 +1030,10 @@ export function useInventory() {
     productId: string,
     name: string,
     sellingPrice: number,
-    costPrice: number
+    costPrice: number,
+    stock: number
   ) => {
-    const { error } = await supabase
+    const { error: productError } = await supabase
       .from('products')
       .update({
         name,
@@ -1013,8 +1042,21 @@ export function useInventory() {
       })
       .eq('id', Number(productId));
 
-    if (error) {
-      alert('Failed to edit product: ' + error.message);
+    if (productError) {
+      alert('Failed to edit product: ' + productError.message);
+      return;
+    }
+
+    const { error: stockError } = await supabase
+      .from('inventory')
+      .update({
+        quantity: stock,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('product_id', Number(productId));
+
+    if (stockError) {
+      alert('Failed to edit stock: ' + stockError.message);
       return;
     }
 
@@ -1072,6 +1114,8 @@ export function useInventory() {
     handleSellProduct,
     handleEditSale,
     handleDeleteSale,
+    handleEditCategory,
+    handleEditSubcategory,
     handleDeleteCategory,
     handleDeleteSubcategory,
     handleDeleteProduct,
