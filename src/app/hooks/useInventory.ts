@@ -5,6 +5,12 @@ import { supabase } from '../lib/supabase';
 import { seedDatabase } from '../lib/seed';
 import { Category, Subcategory, Product, View, ModalType, ShopOrder } from '../types';
 
+const getLocalDateStr = (dateInput: string | Date) => {
+  const d = new Date(dateInput);
+  const offset = d.getTimezoneOffset() * 60000;
+  return new Date(d.getTime() - offset).toISOString().split('T')[0];
+};
+
 export type SaleTransaction = {
   id: number;
   displayId: string;
@@ -31,6 +37,7 @@ export function useInventory() {
   const [activeModal, setActiveModal] = useState<ModalType>(null);
   const [sellProduct, setSellProduct] = useState<Product | null>(null);
   const [addStockProduct, setAddStockProduct] = useState<Product | null>(null);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
   const checkDbConnection = useCallback(async () => {
@@ -299,7 +306,7 @@ export function useInventory() {
 
     // ── Date Boundaries ─────────────────────────────────────────────────
     const now = new Date();
-    const todayStr = now.toISOString().split('T')[0];
+    const todayStr = getLocalDateStr(now);
     const weekAgo = new Date(now);
     weekAgo.setDate(weekAgo.getDate() - 7);
     const monthAgo = new Date(now);
@@ -308,7 +315,7 @@ export function useInventory() {
     // ── Revenue & Profit: sales + active shop orders ─────────────────────────
     const activeOrders = orders.filter((o) => !o.isArchived);
 
-    const todayOrders  = activeOrders.filter((o) => o.createdAt.split('T')[0] === todayStr);
+    const todayOrders  = activeOrders.filter((o) => getLocalDateStr(o.createdAt) === todayStr);
     const weekOrders   = activeOrders.filter((o) => new Date(o.createdAt) >= weekAgo);
     const monthOrders  = activeOrders.filter((o) => new Date(o.createdAt) >= monthAgo);
 
@@ -345,10 +352,10 @@ export function useInventory() {
     for (let i = 0; i < 7; i++) {
       const d = new Date(startOfWeek);
       d.setDate(startOfWeek.getDate() + i);
-      const dayStr = d.toISOString().split('T')[0];
+      const dayStr = getLocalDateStr(d);
       const label = d.toLocaleDateString('en', { weekday: 'short' });
       const daySales  = sales.filter((s) => s.date === dayStr);
-      const dayOrders = activeOrders.filter((o) => o.createdAt.split('T')[0] === dayStr);
+      const dayOrders = activeOrders.filter((o) => getLocalDateStr(o.createdAt) === dayStr);
       salesByDay.push({
         label,
         revenue: daySales.reduce((sum, s) => sum + s.total, 0)
@@ -991,6 +998,29 @@ export function useInventory() {
     await refreshCategories();
   }, [refreshCategories]);
 
+  const handleEditProduct = useCallback(async (
+    productId: string,
+    name: string,
+    sellingPrice: number,
+    costPrice: number
+  ) => {
+    const { error } = await supabase
+      .from('products')
+      .update({
+        name,
+        selling_price: sellingPrice,
+        cost_price: costPrice,
+      })
+      .eq('id', Number(productId));
+
+    if (error) {
+      alert('Failed to edit product: ' + error.message);
+      return;
+    }
+
+    await refreshCategories();
+  }, [refreshCategories]);
+
   const openSellModal = useCallback((product: Product) => {
     setSellProduct(product);
     setActiveModal('sellProduct');
@@ -1023,11 +1053,13 @@ export function useInventory() {
     activeModal,
     sellProduct,
     addStockProduct,
+    editingProduct,
     searchQuery,
     stats,
     setSidebarOpen,
     setSearchQuery,
     setActiveModal,
+    setEditingProduct,
     handleViewChange,
     handleCategoryClick,
     handleSubcategoryClick,
@@ -1035,6 +1067,7 @@ export function useInventory() {
     handleAddCategory,
     handleAddSubcategory,
     handleAddProduct,
+    handleEditProduct,
     handleAddStock,
     handleSellProduct,
     handleEditSale,

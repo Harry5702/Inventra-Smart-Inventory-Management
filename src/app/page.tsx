@@ -13,6 +13,7 @@ import AuthScreen from './components/AuthScreen';
 import AddCategoryModal from './components/AddCategoryModal';
 import AddSubcategoryModal from './components/AddSubcategoryModal';
 import AddProductModal from './components/AddProductModal';
+import EditProductModal from './components/EditProductModal';
 import AddStockModal from './components/AddStockModal';
 import SellProductModal from './components/SellProductModal';
 import { useInventory } from './hooks/useInventory';
@@ -30,11 +31,13 @@ function DashboardApp() {
     activeModal,
     sellProduct,
     addStockProduct,
+    editingProduct,
     searchQuery,
     stats,
     setSidebarOpen,
     setSearchQuery,
     setActiveModal,
+    setEditingProduct,
     handleViewChange,
     handleCategoryClick,
     handleSubcategoryClick,
@@ -42,6 +45,7 @@ function DashboardApp() {
     handleAddCategory,
     handleAddSubcategory,
     handleAddProduct,
+    handleEditProduct,
     handleAddStock,
     handleSellProduct,
     handleEditSale,
@@ -111,6 +115,7 @@ function DashboardApp() {
                     onSubcategoryClick={handleSubcategoryClick}
                     onGoBack={handleGoBack}
                     onOpenModal={setActiveModal}
+                    onOpenEditModal={(p) => { setEditingProduct(p); setActiveModal('editProduct'); }}
                     onOpenSellModal={openSellModal}
                     onOpenAddStockModal={openAddStockModal}
                     onDeleteCategory={handleDeleteCategory}
@@ -121,6 +126,7 @@ function DashboardApp() {
                 {currentView === 'sales' && (
                   <SalesView
                     transactions={sales}
+                    orders={orders}
                     onEditSale={handleEditSale}
                     onDeleteSale={handleDeleteSale}
                   />
@@ -163,6 +169,13 @@ function DashboardApp() {
         isOpen={activeModal === 'addProduct'}
         onClose={() => setActiveModal(null)}
         onAdd={handleAddProduct}
+      />
+
+      <EditProductModal
+        isOpen={activeModal === 'editProduct'}
+        product={editingProduct}
+        onClose={() => setActiveModal(null)}
+        onEdit={handleEditProduct}
       />
 
       <AddStockModal

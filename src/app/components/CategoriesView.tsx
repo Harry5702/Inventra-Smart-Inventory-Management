@@ -2,7 +2,7 @@
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Boxes, Grid3X3, ChevronRight, Plus, ArrowLeft, Package, Minus, Trash2, 
+  Boxes, Grid3X3, ChevronRight, Plus, ArrowLeft, Package, Minus, Trash2, Pencil,
   Users, Clock, Cookie, Zap, Droplet, Disc, Leaf, Gift, Flame, Star, MoreHorizontal 
 } from 'lucide-react';
 import { Category, Subcategory, Product, ModalType } from '../types';
@@ -16,6 +16,7 @@ type CategoriesViewProps = {
   onSubcategoryClick: (sub: Subcategory) => void;
   onGoBack: () => void;
   onOpenModal: (modal: ModalType) => void;
+  onOpenEditModal: (product: Product) => void;
   onOpenSellModal: (product: Product) => void;
   onOpenAddStockModal: (product: Product) => void;
   onDeleteCategory: (id: string) => void;
@@ -32,6 +33,7 @@ export default function CategoriesView({
   onSubcategoryClick,
   onGoBack,
   onOpenModal,
+  onOpenEditModal,
   onOpenSellModal,
   onOpenAddStockModal,
   onDeleteCategory,
@@ -282,21 +284,30 @@ export default function CategoriesView({
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-2 shrink-0">
-                    <button
-                      onClick={() => {
-                        if (
-                          window.confirm(
-                            `Are you sure you want to delete "${prod.name}"?\n\nThis action cannot be undone.`
-                          )
-                        ) {
-                          onDeleteProduct(prod.id);
-                        }
-                      }}
-                      className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                      title="Delete product"
-                    >
-                      <Trash2 size={18} />
-                    </button>
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => onOpenEditModal(prod)}
+                        className="p-2 text-slate-300 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
+                        title="Edit product"
+                      >
+                        <Pencil size={18} />
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (
+                            window.confirm(
+                              `Are you sure you want to delete "${prod.name}"?\n\nThis action cannot be undone.`
+                            )
+                          ) {
+                            onDeleteProduct(prod.id);
+                          }
+                        }}
+                        className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                        title="Delete product"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
                     {getStockBadge(prod.stock)}
                   </div>
                 </div>

@@ -6,18 +6,8 @@ import {
   ClipboardList, Plus, Store, Trash2, Pencil, X, Check,
   ChevronDown, Package, Calendar, Clock, Search, TrendingUp, Download, FileText
 } from 'lucide-react';
-import dynamic from 'next/dynamic';
 import { Category, ShopOrder, OrderItem } from '../types';
 import BillPDF from './BillPDF';
-
-const PDFDownloadLink = dynamic(
-  () => import('@react-pdf/renderer').then(mod => mod.PDFDownloadLink),
-  { ssr: false, loading: () => (
-    <button className="p-2 rounded-xl text-slate-300 transition-colors cursor-not-allowed">
-      <Download size={15} />
-    </button>
-  )}
-);
 
 type OrdersViewProps = {
   categories: Category[];
@@ -390,6 +380,9 @@ export default function OrdersView({
 }: OrdersViewProps) {
   const [showForm, setShowForm] = useState(false);
   const [editingOrder, setEditingOrder] = useState<ShopOrder | null>(null);
+
+  // PDF Generation State
+  const [generatingPdfId, setGeneratingPdfId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
   const filtered = useMemo(() => {
@@ -407,6 +400,40 @@ export default function OrdersView({
     if (!editingOrder) return;
     onEditOrder(editingOrder.id, data);
     setEditingOrder(null);
+  };
+
+  const handleDownloadPDF = async (order: ShopOrder) => {
+    setGeneratingPdfId(order.id);
+    try {
+      const { pdf } = await import('@react-pdf/renderer');
+      const doc = (
+        <BillPDF
+          shopName={order.shopName}
+          date={order.createdAt}
+          items={order.items.map(item => ({
+            name: item.productName,
+            qty: item.quantity,
+            price: item.unitPrice
+          }))}
+          notes={order.notes}
+        />
+      );
+      const asPdf = pdf(doc);
+      const blob = await asPdf.toBlob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Bill_${order.shopName.replace(/\s+/g, '_')}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to generate PDF');
+    } finally {
+      setGeneratingPdfId(null);
+    }
   };
 
   return (
@@ -486,28 +513,18 @@ export default function OrdersView({
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <PDFDownloadLink
-                      document={
-                        <BillPDF
-                          shopName={order.shopName}
-                          date={order.createdAt}
-                          items={order.items.map(item => ({
-                            name: item.productName,
-                            qty: item.quantity,
-                            price: item.unitPrice
-                          }))}
-                          notes={order.notes}
-                        />
-                      }
-                      fileName={`Bill_${order.shopName.replace(/\s+/g, '_')}.pdf`}
-                      className="p-2 rounded-xl text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
+                    <button
+                      onClick={() => handleDownloadPDF(order)}
+                      disabled={generatingPdfId === order.id}
+                      className="p-2 rounded-xl text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors disabled:opacity-50"
                       title="Download Bill PDF"
                     >
-                      {/* @ts-ignore */}
-                      {({ loading }) => (
-                        loading ? <div className="animate-spin w-4 h-4 rounded-full border-2 border-emerald-500 border-t-transparent" /> : <Download size={15} />
+                      {generatingPdfId === order.id ? (
+                        <div className="animate-spin w-4 h-4 rounded-full border-2 border-emerald-500 border-t-transparent" />
+                      ) : (
+                        <Download size={15} />
                       )}
-                    </PDFDownloadLink>
+                    </button>
 
                     <button
                       onClick={() => setEditingOrder(order)}

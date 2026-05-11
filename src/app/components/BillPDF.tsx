@@ -6,6 +6,7 @@ import {
   Text,
   View,
   StyleSheet,
+  Image,
 } from "@react-pdf/renderer";
 
 // ─── Styles ──────────────────────────────────────────────────────────────────
@@ -31,6 +32,18 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.black,
     borderBottomStyle: 'solid',
     marginBottom: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  logo: {
+    width: 80,
+    height: 80,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 40, // optional: makes it circular if the logo is perfectly centered
+  },
+  headerText: {
+    flex: 1,
   },
   companyName: {
     fontSize: 28,
@@ -45,6 +58,12 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     marginTop: 6,
     textTransform: "uppercase",
+  },
+  companyPhone: {
+    fontSize: 10,
+    color: colors.black,
+    letterSpacing: 1,
+    marginTop: 4,
   },
 
   // ── Bill Meta ──
@@ -273,10 +292,16 @@ export default function BillPDF({
       <Page size="A4" style={styles.page}>
         {/* ── Header ── */}
         <View style={styles.header}>
-          <Text style={styles.companyName}>Khalil Traders</Text>
-          <Text style={styles.companyTagline}>
-            Quality Products · Trusted Service
-          </Text>
+          <Image src="/logo.png" style={styles.logo} />
+          <View style={styles.headerText}>
+            <Text style={styles.companyName}>Khalil Traders</Text>
+            <Text style={styles.companyTagline}>
+              Quality Products · Trusted Service
+            </Text>
+            <Text style={styles.companyPhone}>
+              Ph: 03337464886, 03296986696
+            </Text>
+          </View>
         </View>
 
         {/* ── Bill Meta ── */}
