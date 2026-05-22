@@ -56,8 +56,12 @@ export default function SalesView({ transactions, orders = [], onEditSale, onDel
   const [filterStartDate, setFilterStartDate] = useState(getLocalDateStr(new Date()));
   const [filterEndDate, setFilterEndDate] = useState(getLocalDateStr(new Date()));
   
-  // PDF Report Date
-  const [reportDate, setReportDate] = useState(getLocalDateStr(new Date()));
+  // PDF Report Date Range
+  const [reportStartDate, setReportStartDate] = useState(getLocalDateStr(new Date()));
+  const [reportStartTime, setReportStartTime] = useState('00:00');
+  
+  const [reportEndDate, setReportEndDate] = useState(getLocalDateStr(new Date()));
+  const [reportEndTime, setReportEndTime] = useState('23:59');
 
   const startEdit = (trx: Transaction) => { setEditingId(trx.id); setEditQty(String(trx.qty)); };
   const cancelEdit = () => { setEditingId(null); setEditQty(''); };
@@ -109,9 +113,18 @@ const combined = [...retail, ...shopOrders].sort((a, b) => new Date(b.rawDate).g
   const totalRevenue = unifiedItems.reduce((s, t) => s + t.total, 0);
   const totalProfit  = unifiedItems.reduce((s, t) => s + t.profit, 0);
 
-  // Filter for Daily PDF Report
+  // Filter for Custom PDF Report
   const dailyReportItems = useMemo<DailyReportItem[]>(() => {
-    const filtered = unifiedItems.filter(u => u.dateStr === reportDate);
+    const startStr = reportStartDate && reportStartTime ? `${reportStartDate}T${reportStartTime}` : '';
+    const endStr = reportEndDate && reportEndTime ? `${reportEndDate}T${reportEndTime}` : '';
+    const start = startStr ? new Date(startStr).getTime() : 0;
+    const end = endStr ? new Date(endStr).getTime() : Infinity;
+    
+    const filtered = unifiedItems.filter(u => {
+      const time = new Date(u.rawDate).getTime();
+      return time >= start && time <= end;
+    });
+    
     return filtered.map(u => ({
       id: u.id,
       type: u.isOrder ? 'Shop Order' : 'Retail',
@@ -120,19 +133,21 @@ const combined = [...retail, ...shopOrders].sort((a, b) => new Date(b.rawDate).g
       total: u.total,
       profit: u.profit
     }));
-  }, [unifiedItems, reportDate]);
+  }, [unifiedItems, reportStartTime, reportEndTime]);
 
   const handleDownloadPDF = async () => {
     setIsGeneratingPDF(true);
     try {
       const { pdf } = await import('@react-pdf/renderer');
-      const doc = <DailySalesReportPDF date={reportDate} items={dailyReportItems} />;
+      const startStr = reportStartDate && reportStartTime ? `${reportStartDate}T${reportStartTime}` : '';
+      const endStr = reportEndDate && reportEndTime ? `${reportEndDate}T${reportEndTime}` : '';
+      const doc = <DailySalesReportPDF dateRange={{ start: startStr, end: endStr }} items={dailyReportItems} />;
       const asPdf = pdf(doc);
       const blob = await asPdf.toBlob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `Daily_Sales_Report_${reportDate}.pdf`;
+      a.download = `Sales_Report_${reportStartDate}_to_${reportEndDate}.pdf`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -167,25 +182,49 @@ const combined = [...retail, ...shopOrders].sort((a, b) => new Date(b.rawDate).g
         )}
       </div>
 
-      {/* Daily Report Section */}
+      {/* Custom Report Section */}
       <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="p-2.5 rounded-xl bg-white text-indigo-600 shadow-sm">
             <Calendar size={20} />
           </div>
           <div>
-            <h3 className="font-semibold text-slate-800">Daily Sales Report</h3>
-            <p className="text-xs text-slate-500">Download a PDF summary of all sales and orders for a specific day</p>
+            <h3 className="font-semibold text-slate-800">Custom Sales Report</h3>
+            <p className="text-xs text-slate-500">Download a PDF summary for a specific time range</p>
           </div>
         </div>
         
-        <div className="flex items-center gap-3 w-full md:w-auto">
-          <input 
-            type="date" 
-            value={reportDate}
-            onChange={(e) => setReportDate(e.target.value)}
-            className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 flex-1 md:flex-none"
-          />
+        <div className="flex items-center gap-3 w-full md:w-auto flex-wrap">
+          <div className="flex items-center gap-2 bg-white border border-indigo-200 rounded-xl px-2 py-1 focus-within:ring-2 focus-within:ring-indigo-400">
+            <span className="text-xs font-semibold text-indigo-800 ml-1">From</span>
+            <input 
+              type="date" 
+              value={reportStartDate}
+              onChange={(e) => setReportStartDate(e.target.value)}
+              className="px-2 py-1 text-sm focus:outline-none border-r border-indigo-100"
+            />
+            <input 
+              type="time" 
+              value={reportStartTime}
+              onChange={(e) => setReportStartTime(e.target.value)}
+              className="px-2 py-1 text-sm focus:outline-none"
+            />
+          </div>
+          <div className="flex items-center gap-2 bg-white border border-indigo-200 rounded-xl px-2 py-1 focus-within:ring-2 focus-within:ring-indigo-400">
+            <span className="text-xs font-semibold text-indigo-800 ml-1">To</span>
+            <input 
+              type="date" 
+              value={reportEndDate}
+              onChange={(e) => setReportEndDate(e.target.value)}
+              className="px-2 py-1 text-sm focus:outline-none border-r border-indigo-100"
+            />
+            <input 
+              type="time" 
+              value={reportEndTime}
+              onChange={(e) => setReportEndTime(e.target.value)}
+              className="px-2 py-1 text-sm focus:outline-none"
+            />
+          </div>
           <button
             onClick={handleDownloadPDF}
             disabled={isGeneratingPDF}

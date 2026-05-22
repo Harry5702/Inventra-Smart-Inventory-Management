@@ -183,29 +183,35 @@ export type DailyReportItem = {
 };
 
 type DailySalesReportPDFProps = {
-  date: string; // YYYY-MM-DD
+  dateRange: { start: string; end: string };
   items: DailyReportItem[];
 };
 
-export default function DailySalesReportPDF({ date, items }: DailySalesReportPDFProps) {
-  const displayDate = new Date(date).toLocaleDateString("en-PK", {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  });
+export default function DailySalesReportPDF({ dateRange, items }: DailySalesReportPDFProps) {
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return '';
+    return new Date(dateStr).toLocaleString("en-PK", {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+  
+  const displayDate = `${formatDate(dateRange.start)} - ${formatDate(dateRange.end)}`;
 
   const totalRevenue = items.reduce((sum, item) => sum + item.total, 0);
   const totalProfit = items.reduce((sum, item) => sum + item.profit, 0);
 
   return (
-    <Document title={`Daily Sales Report - ${date}`} author="Khalil Traders">
+    <Document title={`Sales Report - ${displayDate}`} author="Khalil Traders">
       <Page size="A4" style={styles.page}>
         <View style={styles.header}>
           <Image src="/logo.png" style={styles.logo} />
           <View style={styles.headerText}>
             <Text style={styles.companyName}>Khalil Traders</Text>
-            <Text style={styles.companyTagline}>Daily Sales Report</Text>
+            <Text style={styles.companyTagline}>Sales Report</Text>
             <Text style={styles.companyPhone}>Ph: 03337464886, 03296986696</Text>
           </View>
         </View>
@@ -233,7 +239,7 @@ export default function DailySalesReportPDF({ date, items }: DailySalesReportPDF
           ))}
           {items.length === 0 && (
             <View style={styles.tableRow}>
-              <Text style={[styles.cellText, { flex: 1, textAlign: 'center' }]}>No sales recorded for this date.</Text>
+              <Text style={[styles.cellText, { flex: 1, textAlign: 'center' }]}>No sales recorded for this time range.</Text>
             </View>
           )}
         </View>
