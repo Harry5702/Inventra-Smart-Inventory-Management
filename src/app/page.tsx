@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
@@ -21,11 +21,13 @@ import { useInventory } from './hooks/useInventory';
 function DashboardApp() {
   const {
     categories,
+    superCategories,
     sales,
     orders,
     isLoading,
     currentView,
     sidebarOpen,
+    selectedSuperCategory,
     selectedCategory,
     selectedSubcategory,
     activeModal,
@@ -39,9 +41,14 @@ function DashboardApp() {
     setActiveModal,
     setEditingProduct,
     handleViewChange,
+    handleSuperCategoryClick,
     handleCategoryClick,
     handleSubcategoryClick,
     handleGoBack,
+    handleAddSuperCategory,
+    handleEditSuperCategory,
+    handleDeleteSuperCategory,
+    handleMoveCategoryToSuperCategory,
     handleAddCategory,
     handleAddSubcategory,
     handleAddProduct,
@@ -65,28 +72,41 @@ function DashboardApp() {
     closeAddStockModal,
   } = useInventory();
 
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+
+  const mainMargin = isMobile ? 0 : sidebarOpen ? 260 : 80;
+
   return (
     <div className="min-h-screen bg-slate-50 flex">
       <Sidebar
         currentView={currentView}
         sidebarOpen={sidebarOpen}
+        isMobile={isMobile}
         onViewChange={handleViewChange}
         onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
       />
 
       <main
-        className="flex-1 transition-all duration-300"
-        style={{ marginLeft: sidebarOpen ? 260 : 80 }}
+        className="flex-1 transition-all duration-300 min-w-0"
+        style={{ marginLeft: mainMargin }}
       >
         <Header
           currentView={currentView}
+          selectedSuperCategory={selectedSuperCategory}
           selectedCategory={selectedCategory}
           selectedSubcategory={selectedSubcategory}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
+          onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
         />
 
-        <div className="p-8 max-w-7xl mx-auto">
+        <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
           {isLoading && categories.length === 0 ? (
             <div className="flex items-center justify-center h-96">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-800" />
@@ -104,15 +124,23 @@ function DashboardApp() {
                   <DashboardView
                     stats={stats}
                     categoryCount={categories.length}
+                    superCategories={superCategories}
                     onResetStats={handleResetStats}
                   />
                 )}
                 {currentView === 'categories' && (
                   <CategoriesView
                     categories={categories}
+                    superCategories={superCategories}
+                    selectedSuperCategory={selectedSuperCategory}
                     selectedCategory={selectedCategory}
                     selectedSubcategory={selectedSubcategory}
                     searchQuery={searchQuery}
+                    onSuperCategoryClick={handleSuperCategoryClick}
+                    onAddSuperCategory={handleAddSuperCategory}
+                    onEditSuperCategory={handleEditSuperCategory}
+                    onDeleteSuperCategory={handleDeleteSuperCategory}
+                    onMoveCategory={handleMoveCategoryToSuperCategory}
                     onCategoryClick={handleCategoryClick}
                     onSubcategoryClick={handleSubcategoryClick}
                     onGoBack={handleGoBack}

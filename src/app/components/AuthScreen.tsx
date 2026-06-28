@@ -387,6 +387,13 @@ export default function LoginPage({ onLogin }: AuthScreenProps) {
           .left { display: none; }
           .right { padding: 24px; }
         }
+
+        @media (max-width: 480px) {
+          .right { padding: 16px; background: #f0f2f8; }
+          .form-card { padding: 28px 20px; border-radius: 20px; }
+          .form-title { font-size: 22px; }
+          .form-subtitle { margin-bottom: 24px; }
+        }
       `}</style>
 
       <div className="page">

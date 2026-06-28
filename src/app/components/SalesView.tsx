@@ -183,7 +183,7 @@ const combined = [...retail, ...shopOrders].sort((a, b) => new Date(b.rawDate).g
       </div>
 
       {/* Custom Report Section */}
-      <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-4">
+      <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 flex flex-col gap-4">
         <div className="flex items-center gap-3">
           <div className="p-2.5 rounded-xl bg-white text-indigo-600 shadow-sm">
             <Calendar size={20} />
@@ -194,35 +194,35 @@ const combined = [...retail, ...shopOrders].sort((a, b) => new Date(b.rawDate).g
           </div>
         </div>
         
-        <div className="flex items-center gap-3 w-full md:w-auto flex-wrap">
-          <div className="flex items-center gap-2 bg-white border border-indigo-200 rounded-xl px-2 py-1 focus-within:ring-2 focus-within:ring-indigo-400">
-            <span className="text-xs font-semibold text-indigo-800 ml-1">From</span>
-            <input 
-              type="date" 
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full">
+          <div className="flex items-center gap-1 bg-white border border-indigo-200 rounded-xl px-2 py-1 focus-within:ring-2 focus-within:ring-indigo-400 flex-1">
+            <span className="text-xs font-semibold text-indigo-800 ml-1 whitespace-nowrap">From</span>
+            <input
+              type="date"
               value={reportStartDate}
               onChange={(e) => setReportStartDate(e.target.value)}
-              className="px-2 py-1 text-sm focus:outline-none border-r border-indigo-100"
+              className="flex-1 min-w-0 px-1 py-1 text-sm focus:outline-none border-r border-indigo-100"
             />
-            <input 
-              type="time" 
+            <input
+              type="time"
               value={reportStartTime}
               onChange={(e) => setReportStartTime(e.target.value)}
-              className="px-2 py-1 text-sm focus:outline-none"
+              className="px-1 py-1 text-sm focus:outline-none"
             />
           </div>
-          <div className="flex items-center gap-2 bg-white border border-indigo-200 rounded-xl px-2 py-1 focus-within:ring-2 focus-within:ring-indigo-400">
-            <span className="text-xs font-semibold text-indigo-800 ml-1">To</span>
-            <input 
-              type="date" 
+          <div className="flex items-center gap-1 bg-white border border-indigo-200 rounded-xl px-2 py-1 focus-within:ring-2 focus-within:ring-indigo-400 flex-1">
+            <span className="text-xs font-semibold text-indigo-800 ml-1 whitespace-nowrap">To</span>
+            <input
+              type="date"
               value={reportEndDate}
               onChange={(e) => setReportEndDate(e.target.value)}
-              className="px-2 py-1 text-sm focus:outline-none border-r border-indigo-100"
+              className="flex-1 min-w-0 px-1 py-1 text-sm focus:outline-none border-r border-indigo-100"
             />
-            <input 
-              type="time" 
+            <input
+              type="time"
               value={reportEndTime}
               onChange={(e) => setReportEndTime(e.target.value)}
-              className="px-2 py-1 text-sm focus:outline-none"
+              className="px-1 py-1 text-sm focus:outline-none"
             />
           </div>
           <button
@@ -250,31 +250,32 @@ const combined = [...retail, ...shopOrders].sort((a, b) => new Date(b.rawDate).g
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-        <div className="p-5 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="p-4 sm:p-5 border-b border-slate-100 flex flex-col gap-3">
           <h3 className="font-semibold text-slate-700">Transactions</h3>
-          <div className="flex items-center gap-2 text-sm">
-            <span className="text-slate-500">From</span>
-            <input
-              type="date"
-              value={filterStartDate}
-              onChange={(e) => setFilterStartDate(e.target.value)}
-              className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300"
-            />
-            <span className="text-slate-500">To</span>
-            <input
-              type="date"
-              value={filterEndDate}
-              onChange={(e) => setFilterEndDate(e.target.value)}
-              className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300"
-            />
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <div className="flex items-center gap-1.5 flex-1 min-w-0">
+              <span className="text-slate-500 whitespace-nowrap text-xs">From</span>
+              <input
+                type="date"
+                value={filterStartDate}
+                onChange={(e) => setFilterStartDate(e.target.value)}
+                className="flex-1 min-w-0 px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 text-xs sm:text-sm"
+              />
+            </div>
+            <div className="flex items-center gap-1.5 flex-1 min-w-0">
+              <span className="text-slate-500 whitespace-nowrap text-xs">To</span>
+              <input
+                type="date"
+                value={filterEndDate}
+                onChange={(e) => setFilterEndDate(e.target.value)}
+                className="flex-1 min-w-0 px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 text-xs sm:text-sm"
+              />
+            </div>
             <button
-              onClick={() => {
-                setFilterStartDate('');
-                setFilterEndDate('');
-              }}
-              className="px-3 py-1.5 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200"
+              onClick={() => { setFilterStartDate(''); setFilterEndDate(''); }}
+              className="px-3 py-1.5 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors border border-slate-200 text-xs whitespace-nowrap"
             >
-              Clear Filter
+              Clear
             </button>
           </div>
         </div>
@@ -288,79 +289,69 @@ const combined = [...retail, ...shopOrders].sort((a, b) => new Date(b.rawDate).g
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: i * 0.04 }}
-                className="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors"
+                className="p-3 sm:p-4 hover:bg-slate-50 transition-colors"
               >
-                {/* Left: icon + product */}
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${trx.isOrder ? 'bg-violet-50' : 'bg-blue-50'}`}>
-                    {trx.isOrder ? <Store className="text-violet-500" size={18} /> : <ShoppingCart className="text-blue-500" size={18} />}
+                {/* Mobile: stacked layout; Desktop: single row */}
+                <div className="flex items-start gap-3">
+                  {/* Icon */}
+                  <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 ${trx.isOrder ? 'bg-violet-50' : 'bg-blue-50'}`}>
+                    {trx.isOrder ? <Store className="text-violet-500" size={16} /> : <ShoppingCart className="text-blue-500" size={16} />}
                   </div>
-                  <div className="min-w-0">
-                    <p className="font-medium text-slate-800 truncate">{trx.detail}</p>
-                    <p className="text-xs text-slate-400">{trx.displayId} · {new Date(trx.rawDate).toLocaleString('en-PK', { dateStyle: 'short', timeStyle: 'short' })}</p>
-                  </div>
-                </div>
 
-                {/* Right: amounts + actions */}
-                <div className="flex items-center gap-4 ml-4 flex-shrink-0">
-                  {!trx.isOrder && editingId === Number(trx.id) && trx.originalTrx ? (
-                    <div className="flex items-center gap-2">
-                      <div className="text-right">
-                        <div className="flex items-center gap-2">
-                          <label className="text-xs text-slate-500">Qty:</label>
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    {/* Row 1: name + amount */}
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="font-medium text-slate-800 text-sm truncate">{trx.detail}</p>
+                      <p className="font-semibold text-slate-800 text-sm whitespace-nowrap flex-shrink-0">
+                        Rs. {trx.total.toLocaleString()}
+                      </p>
+                    </div>
+                    {/* Row 2: meta + profit + actions */}
+                    <div className="flex items-center justify-between gap-2 mt-0.5">
+                      <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                        <p className="text-xs text-slate-400 truncate">
+                          {trx.displayId} · {new Date(trx.rawDate).toLocaleString('en-PK', { dateStyle: 'short', timeStyle: 'short' })}
+                        </p>
+                        <span className={`text-xs font-semibold ${trx.profit >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                          {trx.profit >= 0 ? '+' : ''}Rs.{trx.profit.toLocaleString()}
+                        </span>
+                      </div>
+
+                      {/* Actions */}
+                      {!trx.isOrder && editingId === Number(trx.id) && trx.originalTrx ? (
+                        <div className="flex items-center gap-1 flex-shrink-0">
                           <input
                             type="number" min={1} value={editQty}
                             onChange={(e) => setEditQty(e.target.value)}
-                            className="w-16 px-2 py-1 bg-slate-50 border border-slate-200 rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-300"
+                            className="w-14 px-2 py-1 bg-slate-50 border border-slate-200 rounded text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-300"
                             autoFocus
                           />
+                          <button onClick={() => saveEdit(Number(trx.id))} className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors" title="Save">
+                            <Check size={15} />
+                          </button>
+                          <button onClick={cancelEdit} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Cancel">
+                            <X size={15} />
+                          </button>
                         </div>
-                        <p className="text-xs text-slate-400 mt-1">
-                          Total: Rs. {(trx.originalTrx.unitPrice * parseInt(editQty || '0')).toLocaleString()}
-                        </p>
-                      </div>
-                      <button onClick={() => saveEdit(Number(trx.id))} className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors" title="Save">
-                        <Check size={18} />
-                      </button>
-                      <button onClick={cancelEdit} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Cancel">
-                        <X size={18} />
-                      </button>
+                      ) : (
+                        <div className="flex items-center gap-0.5 flex-shrink-0">
+                          {!trx.isOrder ? (
+                            <>
+                              <button onClick={() => trx.originalTrx && startEdit(trx.originalTrx)} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                                <Pencil size={14} />
+                              </button>
+                              <button onClick={() => onDeleteSale(Number(trx.id))} className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                                <Trash2 size={14} />
+                              </button>
+                            </>
+                          ) : (
+                            <span className="text-xs font-semibold px-2 py-0.5 bg-violet-100 text-violet-700 rounded-lg">WS</span>
+                          )}
+                        </div>
+                      )}
                     </div>
-                  ) : (
-                    <>
-                      {/* Profit badge */}
-                      <div className="text-right hidden sm:block">
-                        <div className={`flex items-center gap-1 text-xs font-semibold justify-end ${trx.profit >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                          <TrendingUp size={12} />
-                          {trx.profit >= 0 ? '+' : ''}Rs. {trx.profit.toLocaleString()}
-                        </div>
-                        <p className="text-xs text-slate-400">profit</p>
-                      </div>
-                      {/* Revenue */}
-                      <div className="text-right w-24">
-                        <p className="font-semibold text-slate-800">Rs. {trx.total.toLocaleString()}</p>
-                        <p className="text-xs text-slate-400">
-                          {trx.qty} {trx.isOrder ? 'items' : `pcs @ Rs. ${trx.unitPrice}`}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-1 w-[72px] justify-end">
-                        {!trx.isOrder ? (
-                          <>
-                            <button onClick={() => trx.originalTrx && startEdit(trx.originalTrx)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Edit retail sale">
-                              <Pencil size={16} />
-                            </button>
-                            <button onClick={() => onDeleteSale(Number(trx.id))} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete retail sale">
-                              <Trash2 size={16} />
-                            </button>
-                          </>
-                        ) : (
-                          <div className="text-xs font-semibold px-2 py-1 bg-violet-100 text-violet-700 rounded-lg">
-                            Wholesale
-                          </div>
-                        )}
-                      </div>
-                    </>
-                  )}
+                  </div>
                 </div>
               </motion.div>
             ))

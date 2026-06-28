@@ -3,12 +3,23 @@
 --  Run these in order inside the Supabase SQL Editor
 -- ============================================================
 
+-- ─── 0. SUPER CATEGORIES ─────────────────────────────────────
+CREATE TABLE IF NOT EXISTS super_categories (
+  id         BIGSERIAL PRIMARY KEY,
+  name       TEXT        NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE super_categories ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "allow_all_super_categories" ON super_categories FOR ALL USING (true) WITH CHECK (true);
+
 -- ─── 1. CATEGORIES ───────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS categories (
-  id            BIGSERIAL PRIMARY KEY,
-  name          TEXT        NOT NULL,
-  is_predefined BOOLEAN     NOT NULL DEFAULT false,
-  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  id                BIGSERIAL PRIMARY KEY,
+  name              TEXT        NOT NULL,
+  is_predefined     BOOLEAN     NOT NULL DEFAULT false,
+  super_category_id BIGINT      REFERENCES super_categories(id) ON DELETE SET NULL,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- ─── 2. SUBCATEGORIES ────────────────────────────────────────

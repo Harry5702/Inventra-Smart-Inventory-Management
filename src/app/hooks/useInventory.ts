@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { seedDatabase } from '../lib/seed';
-import { Category, Subcategory, Product, View, ModalType, ShopOrder } from '../types';
+import { Category, Subcategory, Product, View, ModalType, ShopOrder, SuperCategory } from '../types';
 
 const getLocalDateStr = (dateInput: string | Date) => {
   const d = new Date(dateInput);
@@ -27,11 +27,13 @@ export type SaleTransaction = {
 
 export function useInventory() {
   const [categories, setCategories] = useState<Category[]>([]);
+  const [superCategories, setSuperCategories] = useState<SuperCategory[]>([]);
   const [sales, setSales] = useState<SaleTransaction[]>([]);
   const [orders, setOrders] = useState<ShopOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentView, setCurrentView] = useState<View>('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [selectedSuperCategory, setSelectedSuperCategory] = useState<SuperCategory | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [selectedSubcategory, setSelectedSubcategory] = useState<Subcategory | null>(null);
   const [activeModal, setActiveModal] = useState<ModalType>(null);
@@ -52,38 +54,36 @@ export function useInventory() {
     }
   }, []);
 
+  // Refresh super categories
+  const refreshSuperCategories = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('super_categories')
+      .select('id, name')
+      .order('id', { ascending: true });
+
+    if (error) {
+      // Table not yet created — migration SQL needs to be run in Supabase
+      console.warn('[Inventra] super_categories table not found. Run the migration SQL in Supabase to enable super categories.', error.message);
+      setSuperCategories([]);
+      return;
+    }
+
+    const mapped: SuperCategory[] = ((data as { id: number; name: string }[]) || []).map((sc) => ({
+      id: String(sc.id),
+      name: sc.name,
+    }));
+
+    setSuperCategories(mapped);
+  }, []);
+
   // Refresh categories with nested data
   const refreshCategories = useCallback(async () => {
     setIsLoading(true);
-    const { data, error } = await supabase
-      .from('categories')
-      .select(`
-        id,
-        name,
-        subcategories (
-          id,
-          name,
-          products (
-            id,
-            name,
-            selling_price,
-            cost_price,
-            inventory (quantity)
-          )
-        )
-      `)
-      .order('id', { ascending: true })
-      .order('id', { ascending: false, foreignTable: 'subcategories.products' });
-
-    if (error) {
-      console.error('Error fetching categories:', error);
-      setIsLoading(false);
-      return;
-    }
 
     type CatData = {
       id: number;
       name: string;
+      super_category_id?: number | null;
       subcategories: {
         id: number;
         name: string;
@@ -99,9 +99,70 @@ export function useInventory() {
       inventory: { quantity: number } | Array<{ quantity: number }> | null;
     };
 
-    const mapped: Category[] = ((data as CatData[]) || []).map((cat: CatData) => ({
+    // Try with super_category_id first; fall back without it if column doesn't exist yet
+    let rawData: CatData[] | null = null;
+    let hasSuperCatColumn = true;
+
+    const { data: dataWith, error: errorWith } = await supabase
+      .from('categories')
+      .select(`
+        id,
+        name,
+        super_category_id,
+        subcategories (
+          id,
+          name,
+          products (
+            id,
+            name,
+            selling_price,
+            cost_price,
+            inventory (quantity)
+          )
+        )
+      `)
+      .order('id', { ascending: true })
+      .order('id', { ascending: false, foreignTable: 'subcategories.products' });
+
+    if (errorWith) {
+      // Column likely missing — fall back to query without super_category_id
+      hasSuperCatColumn = false;
+      console.warn('[Inventra] super_category_id column not found — run the ALTER TABLE migration in Supabase.');
+
+      const { data: dataWithout, error: errorWithout } = await supabase
+        .from('categories')
+        .select(`
+          id,
+          name,
+          subcategories (
+            id,
+            name,
+            products (
+              id,
+              name,
+              selling_price,
+              cost_price,
+              inventory (quantity)
+            )
+          )
+        `)
+        .order('id', { ascending: true })
+        .order('id', { ascending: false, foreignTable: 'subcategories.products' });
+
+      if (errorWithout) {
+        console.error('Error fetching categories:', errorWithout);
+        setIsLoading(false);
+        return;
+      }
+      rawData = (dataWithout as CatData[]) || [];
+    } else {
+      rawData = (dataWith as CatData[]) || [];
+    }
+
+    const mapped: Category[] = (rawData).map((cat: CatData) => ({
       id: String(cat.id),
       name: cat.name,
+      superCategoryId: hasSuperCatColumn && cat.super_category_id ? String(cat.super_category_id) : null,
       subcategories: (cat.subcategories || []).map((sub: CatData['subcategories'][0]) => ({
         id: String(sub.id),
         name: sub.name,
@@ -276,13 +337,14 @@ export function useInventory() {
         }
       }
 
+      await refreshSuperCategories();
       await refreshCategories();
       await refreshSales();
       await refreshOrders();
     };
 
     initializeDb();
-  }, [checkDbConnection, refreshCategories, refreshSales, refreshOrders]);
+  }, [checkDbConnection, refreshSuperCategories, refreshCategories, refreshSales, refreshOrders]);
 
   const stats = useMemo(() => {
     // ── Product Aggregates ──────────────────────────────────────────────
@@ -439,11 +501,9 @@ export function useInventory() {
       let rev = 0;
       cat.subcategories.forEach((sub) =>
         sub.products.forEach((prod) => {
-          // From direct sales
           sales.forEach((s) => {
             if (s.productId === Number(prod.id)) rev += s.total;
           });
-          // From shop orders
           activeOrders.forEach((o) => {
             o.items.forEach((item) => {
               if (item.productId === prod.id) rev += item.subtotal;
@@ -455,6 +515,97 @@ export function useInventory() {
     });
     const categoryPerformance = Array.from(categoryRevenueMap.entries())
       .map(([name, revenue]) => ({ name, revenue }))
+      .sort((a, b) => b.revenue - a.revenue);
+
+    // ── Super Category Performance ───────────────────────────────────────
+    // Build product id → super category info map
+    const productToSuperCat = new Map<string, { id: string | null; name: string }>();
+    categories.forEach((cat) => {
+      const sc = superCategories.find((s) => s.id === cat.superCategoryId);
+      const scInfo = cat.superCategoryId
+        ? { id: cat.superCategoryId, name: sc?.name ?? 'Unknown' }
+        : { id: null, name: 'Ungrouped' };
+      cat.subcategories.forEach((sub) =>
+        sub.products.forEach((prod) => {
+          productToSuperCat.set(prod.id, scInfo);
+        })
+      );
+    });
+
+    // Ordered list of super categories (for consistent color assignment)
+    const scOrder: { id: string | null; name: string }[] = superCategories.map((sc) => ({
+      id: sc.id,
+      name: sc.name,
+    }));
+    if (categories.some((c) => !c.superCategoryId)) {
+      scOrder.push({ id: null, name: 'Ungrouped' });
+    }
+
+    // Daily stacked data (Mon → Sun), same window as salesByDay
+    const salesBySuperCat: {
+      label: string;
+      total: number;
+      profit: number;
+      segments: { id: string | null; name: string; revenue: number; profit: number }[];
+    }[] = [];
+
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(startOfWeek);
+      d.setDate(startOfWeek.getDate() + i);
+      const dayStr = getLocalDateStr(d);
+      const label = d.toLocaleDateString('en', { weekday: 'short' });
+
+      const revMap = new Map<string | null, number>();
+      const profMap = new Map<string | null, number>();
+
+      sales.filter((s) => s.date === dayStr).forEach((s) => {
+        const sc = productToSuperCat.get(String(s.productId)) ?? { id: null, name: 'Ungrouped' };
+        revMap.set(sc.id, (revMap.get(sc.id) ?? 0) + s.total);
+        profMap.set(sc.id, (profMap.get(sc.id) ?? 0) + s.profit);
+      });
+      activeOrders.filter((o) => getLocalDateStr(o.createdAt) === dayStr).forEach((o) => {
+        o.items.forEach((item) => {
+          const sc = productToSuperCat.get(item.productId) ?? { id: null, name: 'Ungrouped' };
+          revMap.set(sc.id, (revMap.get(sc.id) ?? 0) + item.subtotal);
+          profMap.set(sc.id, (profMap.get(sc.id) ?? 0) + item.profit);
+        });
+      });
+
+      const segments = scOrder
+        .filter((sc) => (revMap.get(sc.id) ?? 0) > 0 || (profMap.get(sc.id) ?? 0) > 0)
+        .map((sc) => ({
+          id: sc.id,
+          name: sc.name,
+          revenue: revMap.get(sc.id) ?? 0,
+          profit: profMap.get(sc.id) ?? 0,
+        }));
+
+      salesBySuperCat.push({
+        label,
+        total: segments.reduce((sum, s) => sum + s.revenue, 0),
+        profit: segments.reduce((sum, s) => sum + s.profit, 0),
+        segments,
+      });
+    }
+
+    // Super category total revenue + profit (all time)
+    const scRevMap = new Map<string | null, { name: string; revenue: number; profit: number }>();
+    scOrder.forEach((sc) => scRevMap.set(sc.id, { name: sc.name, revenue: 0, profit: 0 }));
+    sales.forEach((s) => {
+      const sc = productToSuperCat.get(String(s.productId)) ?? { id: null, name: 'Ungrouped' };
+      const prev = scRevMap.get(sc.id) ?? { name: sc.name, revenue: 0, profit: 0 };
+      scRevMap.set(sc.id, { name: prev.name, revenue: prev.revenue + s.total, profit: prev.profit + s.profit });
+    });
+    activeOrders.forEach((o) => {
+      o.items.forEach((item) => {
+        const sc = productToSuperCat.get(item.productId) ?? { id: null, name: 'Ungrouped' };
+        const prev = scRevMap.get(sc.id) ?? { name: sc.name, revenue: 0, profit: 0 };
+        scRevMap.set(sc.id, { name: prev.name, revenue: prev.revenue + item.subtotal, profit: prev.profit + item.profit });
+      });
+    });
+    const superCategoryRevenue = Array.from(scRevMap.entries())
+      .map(([id, data]) => ({ id, ...data }))
+      .filter((sc) => sc.revenue > 0 || sc.profit > 0)
       .sort((a, b) => b.revenue - a.revenue);
 
     // ── Stock Predictions (Phase 7) ──────────────────────────────────────
@@ -510,15 +661,18 @@ export function useInventory() {
       profitWeek,
       profitMonth,
       salesByDay,
+      salesBySuperCat,
+      superCategoryRevenue,
       topSelling,
       leastSelling,
       categoryPerformance,
       stockPredictions: stockPredictions.slice(0, 10),
     };
-  }, [categories, sales, orders]);
+  }, [categories, superCategories, sales, orders]);
 
   const handleViewChange = useCallback((view: View) => {
     setCurrentView(view);
+    setSelectedSuperCategory(null);
     setSelectedCategory(null);
     setSelectedSubcategory(null);
   }, []);
@@ -711,18 +865,91 @@ export function useInventory() {
     setSelectedSubcategory(sub);
   }, []);
 
+  const handleSuperCategoryClick = useCallback((sc: SuperCategory) => {
+    setSelectedSuperCategory(sc);
+    setSelectedCategory(null);
+    setSelectedSubcategory(null);
+  }, []);
+
   const handleGoBack = useCallback(() => {
     if (selectedSubcategory) {
       setSelectedSubcategory(null);
     } else if (selectedCategory) {
       setSelectedCategory(null);
+    } else if (selectedSuperCategory) {
+      setSelectedSuperCategory(null);
     }
-  }, [selectedSubcategory, selectedCategory]);
+  }, [selectedSubcategory, selectedCategory, selectedSuperCategory]);
 
   const handleAddCategory = useCallback(async (name: string) => {
-    const { error } = await supabase.from('categories').insert({ name, is_predefined: false });
+    const payload: { name: string; is_predefined: boolean; super_category_id?: number | null } = {
+      name,
+      is_predefined: false,
+    };
+    if (selectedSuperCategory) {
+      payload.super_category_id = Number(selectedSuperCategory.id);
+    }
+    const { error } = await supabase.from('categories').insert(payload);
     if (error) {
       alert('Failed to add category: ' + error.message);
+      return;
+    }
+    await refreshCategories();
+  }, [refreshCategories, selectedSuperCategory]);
+
+  const handleAddSuperCategory = useCallback(async (name: string) => {
+    const { error } = await supabase.from('super_categories').insert({ name });
+    if (error) {
+      alert('Failed to add super category: ' + error.message);
+      return;
+    }
+    await refreshSuperCategories();
+  }, [refreshSuperCategories]);
+
+  const handleEditSuperCategory = useCallback(async (id: string, newName: string) => {
+    const { error } = await supabase
+      .from('super_categories')
+      .update({ name: newName })
+      .eq('id', Number(id));
+    if (error) {
+      alert('Failed to edit super category: ' + error.message);
+      return;
+    }
+    await refreshSuperCategories();
+  }, [refreshSuperCategories]);
+
+  const handleDeleteSuperCategory = useCallback(async (id: string) => {
+    const { error } = await supabase
+      .from('super_categories')
+      .delete()
+      .eq('id', Number(id));
+    if (error) {
+      alert('Cannot delete super category: ' + error.message);
+      return;
+    }
+    if (selectedSuperCategory?.id === id) {
+      setSelectedSuperCategory(null);
+    }
+    await Promise.all([refreshSuperCategories(), refreshCategories()]);
+  }, [refreshSuperCategories, refreshCategories, selectedSuperCategory]);
+
+  const handleMoveCategoryToSuperCategory = useCallback(async (
+    categoryId: string,
+    superCategoryId: string | null,
+  ) => {
+    const { error } = await supabase
+      .from('categories')
+      .update({ super_category_id: superCategoryId ? Number(superCategoryId) : null })
+      .eq('id', Number(categoryId));
+    if (error) {
+      if (error.message?.includes('super_category_id') || error.code === '42703') {
+        alert(
+          'Migration not applied yet.\n\nRun this SQL in your Supabase SQL Editor:\n\n' +
+          'ALTER TABLE categories ADD COLUMN IF NOT EXISTS super_category_id BIGINT REFERENCES super_categories(id) ON DELETE SET NULL;'
+        );
+      } else {
+        alert('Failed to move category: ' + error.message);
+      }
       return;
     }
     await refreshCategories();
@@ -1085,11 +1312,13 @@ export function useInventory() {
 
   return {
     categories,
+    superCategories,
     sales,
     orders,
     isLoading,
     currentView,
     sidebarOpen,
+    selectedSuperCategory,
     selectedCategory,
     selectedSubcategory,
     activeModal,
@@ -1103,9 +1332,14 @@ export function useInventory() {
     setActiveModal,
     setEditingProduct,
     handleViewChange,
+    handleSuperCategoryClick,
     handleCategoryClick,
     handleSubcategoryClick,
     handleGoBack,
+    handleAddSuperCategory,
+    handleEditSuperCategory,
+    handleDeleteSuperCategory,
+    handleMoveCategoryToSuperCategory,
     handleAddCategory,
     handleAddSubcategory,
     handleAddProduct,

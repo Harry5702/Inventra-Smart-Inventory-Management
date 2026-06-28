@@ -19,6 +19,12 @@ export type Category = {
   name: string;
   icon?: string;
   subcategories: Subcategory[];
+  superCategoryId?: string | null;
+};
+
+export type SuperCategory = {
+  id: string;
+  name: string;
 };
 
 export type View = 'dashboard' | 'categories' | 'sales' | 'inventory' | 'orders';

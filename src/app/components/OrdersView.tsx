@@ -156,16 +156,16 @@ function OrderForm({ categories, initial, onSave, onCancel }: OrderFormProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm sm:p-4">
       <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        transition={{ duration: 0.25 }}
-        className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden"
+        initial={{ opacity: 0, y: 40 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 40 }}
+        transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+        className="bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl w-full sm:max-w-2xl max-h-[92vh] flex flex-col overflow-hidden"
       >
         {/* Header */}
-        <div className="p-6 border-b border-slate-100 flex items-center gap-3">
+        <div className="p-4 sm:p-6 border-b border-slate-100 flex items-center gap-3">
           <div className="p-2.5 rounded-xl bg-indigo-50 text-indigo-600">
             <ClipboardList size={20} />
           </div>
@@ -181,7 +181,7 @@ function OrderForm({ categories, initial, onSave, onCancel }: OrderFormProps) {
         </div>
 
         {/* Body */}
-        <div className="overflow-y-auto flex-1 p-6 space-y-5">
+        <div className="overflow-y-auto flex-1 p-4 sm:p-6 space-y-5">
 
           {/* Shop name */}
           <div>
@@ -266,51 +266,51 @@ function OrderForm({ categories, initial, onSave, onCancel }: OrderFormProps) {
               <table className="w-full text-sm">
                 <thead className="bg-slate-50">
                   <tr>
-                    <th className="text-left px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Product</th>
-                    <th className="text-center px-3 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wider w-20">Qty</th>
-                    <th className="text-center px-3 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wider w-28">Unit Price</th>
-                    <th className="text-right px-3 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wider w-24">Subtotal</th>
-                    <th className="text-right px-4 py-2.5 text-xs font-semibold text-emerald-600 uppercase tracking-wider w-24">Profit</th>
-                    <th className="w-10" />
+                    <th className="text-left px-3 sm:px-4 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">Product</th>
+                    <th className="text-center px-2 sm:px-3 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wider w-16 sm:w-20">Qty</th>
+                    <th className="text-center px-2 sm:px-3 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wider w-20 sm:w-28">Price</th>
+                    <th className="text-right px-2 sm:px-3 py-2.5 text-xs font-semibold text-slate-500 uppercase tracking-wider w-20 sm:w-24">Total</th>
+                    <th className="hidden sm:table-cell text-right px-4 py-2.5 text-xs font-semibold text-emerald-600 uppercase tracking-wider w-24">Profit</th>
+                    <th className="w-8 sm:w-10" />
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {items.map((item) => (
                     <tr key={item.productId} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-4 py-3">
-                        <p className="font-medium text-slate-700">{item.productName}</p>
-                        <p className="text-xs text-slate-400">Cost: {fmt(item.costPrice)}/unit</p>
+                      <td className="px-3 sm:px-4 py-2.5 sm:py-3">
+                        <p className="font-medium text-slate-700 text-xs sm:text-sm leading-tight">{item.productName}</p>
+                        <p className="text-xs text-slate-400 hidden sm:block">Cost: {fmt(item.costPrice)}/unit</p>
                       </td>
-                      <td className="px-3 py-3">
+                      <td className="px-2 sm:px-3 py-2.5 sm:py-3">
                         <input
                           type="number"
                           min={1}
                           value={item.quantity}
                           onChange={(e) => updateQty(item.productId, Number(e.target.value))}
-                          className="w-16 text-center border border-slate-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-100"
+                          className="w-12 sm:w-16 text-center border border-slate-200 rounded-lg px-1 sm:px-2 py-1 text-xs sm:text-sm focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-100"
                         />
                       </td>
-                      <td className="px-3 py-3">
+                      <td className="px-2 sm:px-3 py-2.5 sm:py-3">
                         <input
                           type="number"
                           min={0}
                           value={item.unitPrice}
                           onChange={(e) => updatePrice(item.productId, Number(e.target.value))}
-                          className="w-24 text-center border border-slate-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-100"
+                          className="w-16 sm:w-24 text-center border border-slate-200 rounded-lg px-1 sm:px-2 py-1 text-xs sm:text-sm focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-100"
                         />
                       </td>
-                      <td className="px-3 py-3 text-right font-semibold text-slate-700">
+                      <td className="px-2 sm:px-3 py-2.5 sm:py-3 text-right font-semibold text-slate-700 text-xs sm:text-sm">
                         {fmt(item.subtotal)}
                       </td>
-                      <td className={`px-4 py-3 text-right font-semibold text-sm ${item.profit >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                      <td className={`hidden sm:table-cell px-4 py-3 text-right font-semibold text-sm ${item.profit >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
                         {item.profit >= 0 ? '+' : ''}{fmt(item.profit)}
                       </td>
-                      <td className="py-3 pr-3">
+                      <td className="py-2.5 sm:py-3 pr-2 sm:pr-3">
                         <button
                           onClick={() => removeItem(item.productId)}
                           className="p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors"
                         >
-                          <Trash2 size={14} />
+                          <Trash2 size={13} />
                         </button>
                       </td>
                     </tr>
@@ -318,13 +318,13 @@ function OrderForm({ categories, initial, onSave, onCancel }: OrderFormProps) {
                 </tbody>
                 <tfoot>
                   <tr className="bg-indigo-50">
-                    <td colSpan={3} className="px-4 py-3 text-sm font-bold text-indigo-700 uppercase tracking-wider">
+                    <td colSpan={3} className="px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm font-bold text-indigo-700 uppercase tracking-wider">
                       Total
                     </td>
-                    <td className="px-3 py-3 text-right text-base font-bold text-indigo-700">
+                    <td className="px-2 sm:px-3 py-2.5 sm:py-3 text-right text-sm sm:text-base font-bold text-indigo-700">
                       {fmt(totalPrice)}
                     </td>
-                    <td className={`px-4 py-3 text-right text-base font-bold ${totalProfit >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                    <td className={`hidden sm:table-cell px-4 py-3 text-right text-base font-bold ${totalProfit >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
                       {totalProfit >= 0 ? '+' : ''}{fmt(totalProfit)}
                     </td>
                     <td />
@@ -350,7 +350,7 @@ function OrderForm({ categories, initial, onSave, onCancel }: OrderFormProps) {
         </div>
 
         {/* Footer */}
-        <div className="p-6 border-t border-slate-100 flex items-center gap-3">
+        <div className="p-4 sm:p-6 border-t border-slate-100 flex items-center gap-3">
           <button
             onClick={onCancel}
             className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-medium text-sm hover:bg-slate-50 transition-colors"
@@ -444,27 +444,28 @@ export default function OrdersView({
       className="space-y-6"
     >
       {/* Top bar */}
-      <div className="flex items-center gap-4 flex-wrap">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
         <div>
           <h2 className="text-2xl font-bold text-slate-800">Shop Orders</h2>
           <p className="text-sm text-slate-400 mt-0.5">{orders.length} order{orders.length !== 1 ? 's' : ''} total</p>
         </div>
-        <div className="ml-auto flex items-center gap-3">
-          <div className="flex items-center gap-2 border border-slate-200 rounded-xl px-4 py-2 bg-white focus-within:border-indigo-400 focus-within:ring-2 focus-within:ring-indigo-100 transition-all">
-            <Search size={15} className="text-slate-400" />
+        <div className="flex items-center gap-3 sm:ml-auto">
+          <div className="flex-1 sm:flex-none flex items-center gap-2 border border-slate-200 rounded-xl px-3 sm:px-4 py-2 bg-white focus-within:border-indigo-400 focus-within:ring-2 focus-within:ring-indigo-100 transition-all">
+            <Search size={15} className="text-slate-400 flex-shrink-0" />
             <input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search shops..."
-              className="outline-none text-sm text-slate-700 placeholder-slate-400 w-44 bg-transparent"
+              className="outline-none text-sm text-slate-700 placeholder-slate-400 w-full sm:w-36 bg-transparent"
             />
           </div>
           <button
             onClick={() => setShowForm(true)}
-            className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-semibold text-sm hover:bg-indigo-700 transition-colors shadow-sm shadow-indigo-200"
+            className="flex-shrink-0 flex items-center gap-2 px-4 sm:px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-semibold text-sm hover:bg-indigo-700 transition-colors shadow-sm shadow-indigo-200"
           >
             <Plus size={16} />
-            New Order
+            <span className="hidden xs:inline sm:inline">New Order</span>
+            <span className="xs:hidden sm:hidden">New</span>
           </button>
         </div>
       </div>
