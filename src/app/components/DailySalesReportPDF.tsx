@@ -104,10 +104,10 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.gray,
     borderBottomStyle: 'solid',
   },
-  cellType: { width: "15%" },
-  cellDetail: { width: "40%" },
-  cellQty: { width: "15%", textAlign: "center" as const },
-  cellTotal: { width: "30%", textAlign: "right" as const },
+  cellDetail: { width: "25%" },
+  cellItems: { width: "40%" },
+  cellQty: { width: "12%", textAlign: "center" as const },
+  cellTotal: { width: "23%", textAlign: "right" as const },
   cellText: {
     fontSize: 10,
     color: colors.black,
@@ -175,8 +175,8 @@ const formatCurrency = (amount: number) =>
 
 export type DailyReportItem = {
   id: string;
-  type: 'Retail' | 'Shop Order';
   detail: string;
+  items: string;
   qty: number;
   total: number;
   profit: number;
@@ -223,16 +223,16 @@ export default function DailySalesReportPDF({ dateRange, items }: DailySalesRepo
 
         <View style={styles.tableContainer}>
           <View style={styles.tableHeader}>
-            <Text style={[styles.tableHeaderCell, styles.cellType]}>Type</Text>
             <Text style={[styles.tableHeaderCell, styles.cellDetail]}>Detail</Text>
+            <Text style={[styles.tableHeaderCell, styles.cellItems]}>Items</Text>
             <Text style={[styles.tableHeaderCell, styles.cellQty]}>Items/Qty</Text>
             <Text style={[styles.tableHeaderCell, styles.cellTotal]}>Amount</Text>
           </View>
 
           {items.map((item, i) => (
             <View key={i} style={styles.tableRow}>
-              <Text style={[styles.cellText, styles.cellType]}>{item.type}</Text>
               <Text style={[styles.cellTextBold, styles.cellDetail]}>{item.detail}</Text>
+              <Text style={[styles.cellText, styles.cellItems]}>{item.items}</Text>
               <Text style={[styles.cellText, styles.cellQty]}>{item.qty}</Text>
               <Text style={[styles.cellTextRightBold, styles.cellTotal]}>{formatCurrency(item.total)}</Text>
             </View>

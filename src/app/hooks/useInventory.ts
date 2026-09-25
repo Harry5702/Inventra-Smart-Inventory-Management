@@ -11,6 +11,44 @@ const getLocalDateStr = (dateInput: string | Date) => {
   return new Date(d.getTime() - offset).toISOString().split('T')[0];
 };
 
+// Calendar week: Monday 00:00 → Sunday 23:59:59.999
+const getWeekRange = (now: Date) => {
+  const start = new Date(now);
+  const daysSinceMonday = (start.getDay() + 6) % 7;
+  start.setDate(start.getDate() - daysSinceMonday);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  end.setHours(23, 59, 59, 999);
+  return { start, end };
+};
+
+// Calendar month: 1st 00:00 → last day 23:59:59.999
+const getMonthRange = (now: Date) => {
+  const start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+  const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+  return { start, end };
+};
+
+// Supabase/PostgREST caps a single response at 1000 rows by default. Page through
+// with .range() so history beyond that cap (e.g. all-time sales) is still loaded.
+const SUPABASE_PAGE_SIZE = 1000;
+async function fetchAllPages<T>(
+  buildQuery: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>
+): Promise<{ rows: T[]; error: { message: string } | null }> {
+  const rows: T[] = [];
+  let from = 0;
+  while (true) {
+    const { data, error } = await buildQuery(from, from + SUPABASE_PAGE_SIZE - 1);
+    if (error) return { rows, error };
+    const page = data ?? [];
+    rows.push(...page);
+    if (page.length < SUPABASE_PAGE_SIZE) break;
+    from += SUPABASE_PAGE_SIZE;
+  }
+  return { rows, error: null };
+}
+
 export type SaleTransaction = {
   id: number;
   displayId: string;
@@ -199,23 +237,6 @@ export function useInventory() {
 
   // Refresh sales with product names
   const refreshSales = useCallback(async () => {
-    const { data, error } = await supabase
-      .from('sales')
-      .select(`
-        id,
-        quantity,
-        selling_price,
-        date,
-        product_id,
-        products (name, cost_price)
-      `)
-      .order('date', { ascending: false });
-
-    if (error) {
-      console.error('Error fetching sales:', error);
-      return;
-    }
-
     type SalesData = {
       id: number;
       quantity: number;
@@ -225,7 +246,27 @@ export function useInventory() {
       products?: { name: string; cost_price: string | number };
     };
 
-    const mapped: SaleTransaction[] = ((data as unknown) as SalesData[] || []).map((s: SalesData) => {
+    const { rows, error } = await fetchAllPages<SalesData>((from, to) =>
+      supabase
+        .from('sales')
+        .select(`
+          id,
+          quantity,
+          selling_price,
+          date,
+          product_id,
+          products (name, cost_price)
+        `)
+        .order('date', { ascending: false })
+        .range(from, to) as unknown as PromiseLike<{ data: SalesData[] | null; error: { message: string } | null }>
+    );
+
+    if (error) {
+      console.error('Error fetching sales:', error);
+      return;
+    }
+
+    const mapped: SaleTransaction[] = rows.map((s: SalesData) => {
       const qty       = s.quantity;
       const sellPrice = Number(s.selling_price);
       const costPrice = Number(s.products?.cost_price ?? 0);
@@ -249,35 +290,6 @@ export function useInventory() {
 
   // Refresh shop orders from Supabase
   const refreshOrders = useCallback(async () => {
-    const { data, error } = await supabase
-      .from('shop_orders')
-      .select(`
-        id,
-        shop_name,
-        total_price,
-        total_profit,
-        notes,
-        created_at,
-        updated_at,
-        is_archived,
-        shop_order_items (
-          id,
-          product_id,
-          product_name,
-          unit_price,
-          cost_price,
-          quantity,
-          subtotal,
-          profit
-        )
-      `)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Error fetching orders:', error);
-      return;
-    }
-
     type OrderRow = {
       id: number;
       shop_name: string;
@@ -299,7 +311,39 @@ export function useInventory() {
       }[];
     };
 
-    const mapped: ShopOrder[] = ((data as unknown) as OrderRow[] || []).map((o) => ({
+    const { rows, error } = await fetchAllPages<OrderRow>((from, to) =>
+      supabase
+        .from('shop_orders')
+        .select(`
+          id,
+          shop_name,
+          total_price,
+          total_profit,
+          notes,
+          created_at,
+          updated_at,
+          is_archived,
+          shop_order_items (
+            id,
+            product_id,
+            product_name,
+            unit_price,
+            cost_price,
+            quantity,
+            subtotal,
+            profit
+          )
+        `)
+        .order('created_at', { ascending: false })
+        .range(from, to) as unknown as PromiseLike<{ data: OrderRow[] | null; error: { message: string } | null }>
+    );
+
+    if (error) {
+      console.error('Error fetching orders:', error);
+      return;
+    }
+
+    const mapped: ShopOrder[] = rows.map((o) => ({
       id: String(o.id),
       shopName: o.shop_name,
       totalPrice: Number(o.total_price),
@@ -369,8 +413,9 @@ export function useInventory() {
     // ── Date Boundaries ─────────────────────────────────────────────────
     const now = new Date();
     const todayStr = getLocalDateStr(now);
-    const weekAgo = new Date(now);
-    weekAgo.setDate(weekAgo.getDate() - 7);
+    const { start: weekStart, end: weekEnd } = getWeekRange(now);
+    const { start: monthStart, end: monthEnd } = getMonthRange(now);
+    // Kept for the 30-day rolling stock-prediction window below (distinct from calendar month)
     const monthAgo = new Date(now);
     monthAgo.setDate(monthAgo.getDate() - 30);
 
@@ -378,8 +423,8 @@ export function useInventory() {
     const activeOrders = orders.filter((o) => !o.isArchived);
 
     const todayOrders  = activeOrders.filter((o) => getLocalDateStr(o.createdAt) === todayStr);
-    const weekOrders   = activeOrders.filter((o) => new Date(o.createdAt) >= weekAgo);
-    const monthOrders  = activeOrders.filter((o) => new Date(o.createdAt) >= monthAgo);
+    const weekOrders   = activeOrders.filter((o) => { const d = new Date(o.createdAt); return d >= weekStart && d <= weekEnd; });
+    const monthOrders  = activeOrders.filter((o) => { const d = new Date(o.createdAt); return d >= monthStart && d <= monthEnd; });
 
     const orderRevTotal  = activeOrders.reduce((sum, o) => sum + o.totalPrice,  0);
     const orderProfTotal = activeOrders.reduce((sum, o) => sum + o.totalProfit, 0);
@@ -388,8 +433,8 @@ export function useInventory() {
     const totalProfit  = sales.reduce((sum, s) => sum + s.profit, 0) + orderProfTotal;
 
     const todaySales   = sales.filter((s) => s.date === todayStr);
-    const weekSales    = sales.filter((s) => new Date(s.rawDate) >= weekAgo);
-    const monthSales   = sales.filter((s) => new Date(s.rawDate) >= monthAgo);
+    const weekSales    = sales.filter((s) => { const d = new Date(s.rawDate); return d >= weekStart && d <= weekEnd; });
+    const monthSales   = sales.filter((s) => { const d = new Date(s.rawDate); return d >= monthStart && d <= monthEnd; });
 
     const revenueToday = todaySales.reduce((sum, s) => sum + s.total, 0) + todayOrders.reduce((sum, o) => sum + o.totalPrice, 0);
     const revenueWeek  = weekSales.reduce((sum, s) => sum + s.total, 0)  + weekOrders.reduce((sum, o) => sum + o.totalPrice, 0);
@@ -405,11 +450,7 @@ export function useInventory() {
 
     // ── Sales Over Time (Mon → Sun) ──────────────────────────────────────
     const salesByDay: { label: string; revenue: number; qty: number }[] = [];
-    const startOfWeek = new Date(now);
-    const dayIndex = startOfWeek.getDay();
-    const daysSinceMonday = (dayIndex + 6) % 7;
-    startOfWeek.setDate(startOfWeek.getDate() - daysSinceMonday);
-    startOfWeek.setHours(0, 0, 0, 0);
+    const startOfWeek = weekStart;
 
     for (let i = 0; i < 7; i++) {
       const d = new Date(startOfWeek);
@@ -688,15 +729,13 @@ export function useInventory() {
       salesQuery = salesQuery.gte('date', todayStr);
       ordersQuery = ordersQuery.gte('created_at', todayStr);
     } else if (period === 'week') {
-      const weekAgo = new Date(now);
-      weekAgo.setDate(weekAgo.getDate() - 7);
-      salesQuery = salesQuery.gte('date', weekAgo.toISOString());
-      ordersQuery = ordersQuery.gte('created_at', weekAgo.toISOString());
+      const { start } = getWeekRange(now);
+      salesQuery = salesQuery.gte('date', start.toISOString());
+      ordersQuery = ordersQuery.gte('created_at', start.toISOString());
     } else if (period === 'month') {
-      const monthAgo = new Date(now);
-      monthAgo.setDate(monthAgo.getDate() - 30);
-      salesQuery = salesQuery.gte('date', monthAgo.toISOString());
-      ordersQuery = ordersQuery.gte('created_at', monthAgo.toISOString());
+      const { start } = getMonthRange(now);
+      salesQuery = salesQuery.gte('date', start.toISOString());
+      ordersQuery = ordersQuery.gte('created_at', start.toISOString());
     } else {
       // reset all
       salesQuery = salesQuery.neq('id', -1);

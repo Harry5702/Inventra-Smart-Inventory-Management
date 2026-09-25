@@ -33,6 +33,7 @@ type UnifiedTransaction = {
   id: string; // string so it can handle string or number
   displayId: string;
   detail: string;
+  items: { name: string; qty: number }[]; // individual line items ordered
   qty: number;
   unitPrice?: number;
   total: number;
@@ -81,6 +82,7 @@ export default function SalesView({ transactions, orders = [], onEditSale, onDel
       id: String(t.id),
       displayId: t.displayId,
       detail: t.product,
+      items: [{ name: t.product, qty: t.qty }],
       qty: t.qty,
       unitPrice: t.unitPrice,
       total: t.total,
@@ -95,6 +97,7 @@ export default function SalesView({ transactions, orders = [], onEditSale, onDel
       id: String(o.id),
       displayId: `#ORD-${String(o.id).padStart(3, '0')}`,
       detail: `Shop: ${o.shopName}`,
+      items: o.items.map(item => ({ name: item.productName, qty: item.quantity })),
       qty: o.items.reduce((sum, item) => sum + item.quantity, 0),
       total: o.totalPrice,
       profit: o.totalProfit,
@@ -127,8 +130,8 @@ const combined = [...retail, ...shopOrders].sort((a, b) => new Date(b.rawDate).g
     
     return filtered.map(u => ({
       id: u.id,
-      type: u.isOrder ? 'Shop Order' : 'Retail',
       detail: u.detail,
+      items: u.items.map(it => `${it.name} x${it.qty}`).join(', '),
       qty: u.qty,
       total: u.total,
       profit: u.profit
